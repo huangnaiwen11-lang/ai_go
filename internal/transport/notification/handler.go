@@ -7,6 +7,7 @@ package notification
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -47,6 +48,10 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.list(w, r, identity.UserID)
 	case r.Method == http.MethodGet && r.URL.Path == notificationsPath+"/unread-count":
 		h.unreadCount(w, r, identity.UserID)
+	case r.Method == http.MethodGet && r.URL.Path == notificationsPath+"/preferences":
+		h.getPreferences(w, r, identity.UserID)
+	case r.Method == http.MethodPatch && r.URL.Path == notificationsPath+"/preferences":
+		h.savePreferences(w, r, identity.UserID)
 	case r.Method == http.MethodPost && r.URL.Path == notificationsPath+"/read-all":
 		h.markAllRead(w, r, identity.UserID)
 	case r.Method == http.MethodDelete && r.URL.Path == notificationsPath:
@@ -104,6 +109,48 @@ func (h *handler) unreadCount(w http.ResponseWriter, r *http.Request, userID str
 	writeSuccess(w, http.StatusOK, map[string]any{"count": unread})
 }
 
+// getPreferences 只读取当前会话的通知偏好，不支持用 query 指定任何其他用户。
+func (h *handler) getPreferences(w http.ResponseWriter, r *http.Request, userID string) {
+	if r.URL.RawQuery != "" {
+		writeClientError(w, http.StatusNotFound, "NOT_FOUND", "Not found")
+		return
+	}
+	preferences, err := h.usecase.GetPreferences(r.Context(), userID)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeSuccess(w, http.StatusOK, preferenceView(preferences))
+}
+
+// savePreferences 只接收完整的三项布尔快照。partial update 容易使请求重放覆盖用户刚刚
+// 调整的另一项设置，因此客户端必须先读取、在本地形成完整快照后再保存。
+func (h *handler) savePreferences(w http.ResponseWriter, r *http.Request, userID string) {
+	if r.URL.RawQuery != "" {
+		writeClientError(w, http.StatusNotFound, "NOT_FOUND", "Not found")
+		return
+	}
+	var body struct {
+		PushEnabled                *bool `json:"pushEnabled"`
+		EmailEnabled               *bool `json:"emailEnabled"`
+		GenerationCompletedEnabled *bool `json:"generationCompletedEnabled"`
+	}
+	if err := decodeStrictJSON(r, &body); err != nil || body.PushEnabled == nil || body.EmailEnabled == nil || body.GenerationCompletedEnabled == nil {
+		writeClientError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request")
+		return
+	}
+	preferences := biznotification.Preferences{
+		PushEnabled:                *body.PushEnabled,
+		EmailEnabled:               *body.EmailEnabled,
+		GenerationCompletedEnabled: *body.GenerationCompletedEnabled,
+	}
+	if err := h.usecase.SavePreferences(r.Context(), userID, preferences); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeSuccess(w, http.StatusOK, preferenceView(preferences))
+}
+
 func (h *handler) markAllRead(w http.ResponseWriter, r *http.Request, userID string) {
 	count, err := h.usecase.MarkAllRead(r.Context(), userID)
 	if err != nil {
@@ -159,6 +206,30 @@ func itemViews(items []biznotification.Item) []map[string]any {
 		views = append(views, map[string]any{"id": item.ID, "userId": item.UserID, "type": item.Type, "title": item.Title, "body": item.Body, "data": item.Data, "read": item.Read, "readAt": item.ReadAt, "createdAt": item.CreatedAt})
 	}
 	return views
+}
+
+func preferenceView(preferences biznotification.Preferences) map[string]any {
+	return map[string]any{
+		"pushEnabled":                preferences.PushEnabled,
+		"emailEnabled":               preferences.EmailEnabled,
+		"generationCompletedEnabled": preferences.GenerationCompletedEnabled,
+	}
+}
+
+// decodeStrictJSON 禁止未知字段及多个 JSON 值，保证浏览器不会悄悄夹带 userId 或投递凭据。
+func decodeStrictJSON(request *http.Request, target any) error {
+	if request == nil || request.Body == nil {
+		return errors.New("request body is required")
+	}
+	decoder := json.NewDecoder(io.LimitReader(request.Body, 8<<10))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return errors.New("multiple JSON values")
+	}
+	return nil
 }
 
 func writeSuccess(w http.ResponseWriter, status int, data any) {

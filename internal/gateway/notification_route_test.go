@@ -14,6 +14,8 @@ func TestMatchNotificationRouteUsesDynamicPlaceholder(t *testing.T) {
 	}{
 		{http.MethodGet, "/api/notifications", exactRouteKey{http.MethodGet, "/api/notifications"}},
 		{http.MethodDelete, "/api/notifications", exactRouteKey{http.MethodDelete, "/api/notifications"}},
+		{http.MethodGet, "/api/notifications/preferences", exactRouteKey{http.MethodGet, "/api/notifications/preferences"}},
+		{http.MethodPatch, "/api/notifications/preferences", exactRouteKey{http.MethodPatch, "/api/notifications/preferences"}},
 		{http.MethodPost, "/api/notifications/n-1/read", exactRouteKey{http.MethodPost, "/api/notifications/:id/read"}},
 		{http.MethodDelete, "/api/notifications/n-1", exactRouteKey{http.MethodDelete, "/api/notifications/:id"}},
 	}

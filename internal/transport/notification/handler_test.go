@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,9 +22,11 @@ func (fake fakeAuthenticator) Authenticate(*http.Request) (*sessionauth.Authenti
 }
 
 type fakeNotificationRepository struct {
-	lastQuery biznotification.ListQuery
-	readUser  string
-	readID    string
+	lastQuery         biznotification.ListQuery
+	readUser          string
+	readID            string
+	preferencesUserID string
+	preferences       biznotification.Preferences
 }
 
 func (fake *fakeNotificationRepository) List(_ context.Context, query biznotification.ListQuery) ([]biznotification.Item, int, error) {
@@ -40,6 +43,14 @@ func (fake *fakeNotificationRepository) MarkAllRead(context.Context, string, tim
 func (fake *fakeNotificationRepository) Delete(context.Context, string, string) error { return nil }
 func (fake *fakeNotificationRepository) DeleteRead(context.Context, string) (int, error) {
 	return 1, nil
+}
+func (fake *fakeNotificationRepository) GetPreferences(_ context.Context, userID string) (biznotification.Preferences, error) {
+	fake.preferencesUserID = userID
+	return fake.preferences, nil
+}
+func (fake *fakeNotificationRepository) SavePreferences(_ context.Context, userID string, preferences biznotification.Preferences) error {
+	fake.preferencesUserID, fake.preferences = userID, preferences
+	return nil
 }
 
 func TestHandlerListUsesSessionUserAndProjectsLegacyFields(t *testing.T) {
@@ -101,5 +112,31 @@ func TestHandlerClearReadUsesOnlySessionUserAndRejectsQuery(t *testing.T) {
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodDelete, "/api/notifications?all=1", nil))
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("query status=%d, want 404", recorder.Code)
+	}
+}
+
+// 偏好只属于当前 Go 会话，浏览器不能在路径、查询参数或 JSON 中指定目标用户。
+func TestHandlerNotificationPreferencesUseOnlyCurrentSession(t *testing.T) {
+	repository := &fakeNotificationRepository{preferences: biznotification.Preferences{PushEnabled: true, EmailEnabled: false, GenerationCompletedEnabled: true}}
+	handler := NewHandler(fakeAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "session-user"}}, biznotification.NewUsecase(repository))
+
+	getRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(getRecorder, httptest.NewRequest(http.MethodGet, "/api/notifications/preferences", nil))
+	if getRecorder.Code != http.StatusOK || repository.preferencesUserID != "session-user" {
+		t.Fatalf("get status=%d user=%q", getRecorder.Code, repository.preferencesUserID)
+	}
+
+	patchRecorder := httptest.NewRecorder()
+	patchRequest := httptest.NewRequest(http.MethodPatch, "/api/notifications/preferences", strings.NewReader(`{"pushEnabled":false,"emailEnabled":true,"generationCompletedEnabled":false,"userId":"other-user"}`))
+	handler.ServeHTTP(patchRecorder, patchRequest)
+	if patchRecorder.Code != http.StatusBadRequest || repository.preferences.EmailEnabled {
+		t.Fatalf("unknown user field must be rejected: status=%d preferences=%+v", patchRecorder.Code, repository.preferences)
+	}
+
+	patchRecorder = httptest.NewRecorder()
+	patchRequest = httptest.NewRequest(http.MethodPatch, "/api/notifications/preferences", strings.NewReader(`{"pushEnabled":false,"emailEnabled":true,"generationCompletedEnabled":false}`))
+	handler.ServeHTTP(patchRecorder, patchRequest)
+	if patchRecorder.Code != http.StatusOK || repository.preferencesUserID != "session-user" || repository.preferences.PushEnabled || !repository.preferences.EmailEnabled || repository.preferences.GenerationCompletedEnabled {
+		t.Fatalf("patch status=%d user=%q preferences=%+v", patchRecorder.Code, repository.preferencesUserID, repository.preferences)
 	}
 }

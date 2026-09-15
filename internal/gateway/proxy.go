@@ -96,6 +96,8 @@ var notificationRoutes = [...]exactRouteKey{
 	{method: http.MethodGet, path: "/api/notifications"},
 	{method: http.MethodDelete, path: "/api/notifications"},
 	{method: http.MethodGet, path: "/api/notifications/unread-count"},
+	{method: http.MethodGet, path: "/api/notifications/preferences"},
+	{method: http.MethodPatch, path: "/api/notifications/preferences"},
 	{method: http.MethodPost, path: "/api/notifications/read-all"},
 	{method: http.MethodPost, path: "/api/notifications/:id/read"},
 	{method: http.MethodDelete, path: "/api/notifications/:id"},

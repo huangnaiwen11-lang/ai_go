@@ -31,6 +31,7 @@ func TestAllCollectionsReturnsIndependentOrderedList(t *testing.T) {
 		"outbox_events",
 		"feedbacks",
 		"notifications",
+		"notification_preferences",
 	}
 
 	got := AllCollections()

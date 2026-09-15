@@ -12,6 +12,8 @@ type memoryRepository struct {
 	all       string
 	deleted   string
 	cleared   string
+	prefUser  string
+	pref      Preferences
 }
 
 func (r *memoryRepository) List(_ context.Context, q ListQuery) ([]Item, int, error) {
@@ -34,6 +36,14 @@ func (r *memoryRepository) Delete(_ context.Context, userID, id string) error {
 func (r *memoryRepository) DeleteRead(_ context.Context, userID string) (int, error) {
 	r.cleared = userID
 	return 3, nil
+}
+func (r *memoryRepository) GetPreferences(_ context.Context, userID string) (Preferences, error) {
+	r.prefUser = userID
+	return r.pref, nil
+}
+func (r *memoryRepository) SavePreferences(_ context.Context, userID string, preferences Preferences) error {
+	r.prefUser, r.pref = userID, preferences
+	return nil
 }
 
 func TestUsecaseAlwaysScopesByUser(t *testing.T) {
@@ -63,5 +73,17 @@ func TestUsecaseDeleteReadAlwaysScopesByCurrentUser(t *testing.T) {
 	}
 	if repository.cleared != "session-user" {
 		t.Fatalf("clear user=%q", repository.cleared)
+	}
+}
+
+func TestUsecasePreferencesAlwaysScopeByCurrentUser(t *testing.T) {
+	repository := &memoryRepository{}
+	usecase := NewUsecase(repository)
+	want := Preferences{PushEnabled: false, EmailEnabled: true, GenerationCompletedEnabled: false}
+	if err := usecase.SavePreferences(context.Background(), "session-user", want); err != nil {
+		t.Fatal(err)
+	}
+	if repository.prefUser != "session-user" || repository.pref != want {
+		t.Fatalf("saved user=%q preferences=%+v", repository.prefUser, repository.pref)
 	}
 }

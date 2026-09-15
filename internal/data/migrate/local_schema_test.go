@@ -41,6 +41,7 @@ var expectedCollectionNames = []string{
 	"outbox_events",
 	"feedbacks",
 	"notifications",
+	"notification_preferences",
 }
 
 var expectedIndexSpecs = []struct {
