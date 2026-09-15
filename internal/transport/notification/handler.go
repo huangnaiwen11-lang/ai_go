@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"ai-business-service/internal/biz/shared"
 	biznotification "ai-business-service/internal/biz/notification"
+	"ai-business-service/internal/biz/shared"
 	"ai-business-service/internal/transport/sessionauth"
 )
 
@@ -49,6 +49,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.unreadCount(w, r, identity.UserID)
 	case r.Method == http.MethodPost && r.URL.Path == notificationsPath+"/read-all":
 		h.markAllRead(w, r, identity.UserID)
+	case r.Method == http.MethodDelete && r.URL.Path == notificationsPath:
+		h.clearRead(w, r, identity.UserID)
 	case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, notificationsPath+"/") && strings.HasSuffix(r.URL.Path, "/read"):
 		h.markRead(w, r, identity.UserID)
 	case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, notificationsPath+"/"):
@@ -109,6 +111,20 @@ func (h *handler) markAllRead(w http.ResponseWriter, r *http.Request, userID str
 		return
 	}
 	writeSuccess(w, http.StatusOK, map[string]any{"updated": count})
+}
+
+// clearRead 仅清除已读通知；不接受 query 或 body 来改变删除范围。
+func (h *handler) clearRead(w http.ResponseWriter, r *http.Request, userID string) {
+	if r.URL.RawQuery != "" || r.ContentLength > 0 {
+		writeClientError(w, http.StatusNotFound, "NOT_FOUND", "Not found")
+		return
+	}
+	deleted, err := h.usecase.DeleteRead(r.Context(), userID)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeSuccess(w, http.StatusOK, map[string]any{"deleted": deleted})
 }
 
 func (h *handler) markRead(w http.ResponseWriter, r *http.Request, userID string) {

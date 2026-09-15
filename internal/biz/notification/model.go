@@ -27,6 +27,8 @@ type Repository interface {
 	MarkRead(context.Context, string, string, time.Time) error
 	MarkAllRead(context.Context, string, time.Time) (int, error)
 	Delete(context.Context, string, string) error
+	// DeleteRead 只能删除当前用户已经阅读的通知，不能承担“全量清空”语义。
+	DeleteRead(context.Context, string) (int, error)
 }
 
 type Usecase struct {
@@ -63,4 +65,12 @@ func (usecase *Usecase) Delete(ctx context.Context, userID, id string) error {
 		return ErrInvalidInput
 	}
 	return usecase.repository.Delete(ctx, userID, id)
+}
+
+// DeleteRead 清理当前会话用户已读通知。未读通知保留，避免把待处理消息误删。
+func (usecase *Usecase) DeleteRead(ctx context.Context, userID string) (int, error) {
+	if userID == "" {
+		return 0, ErrInvalidInput
+	}
+	return usecase.repository.DeleteRead(ctx, userID)
 }

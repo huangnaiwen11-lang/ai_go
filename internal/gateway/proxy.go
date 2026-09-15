@@ -17,7 +17,7 @@ type Config struct {
 	GenerationCallback http.Handler
 	// PaymentCallback 仅在独立开关和精确路由开关均放行后处理本地 PayCores 回调。
 	PaymentCallback http.Handler
-	// PaymentEntryHandler 仅在本地会话、支付入口和本地 IAP 验证器均启用时处理两条钱包入口。
+	// PaymentEntryHandler 仅在既有支付开关启用时处理已审查的支付读写入口。
 	PaymentEntryHandler http.Handler
 	// T2IHandler 只处理已通过精确路由和纯 T2I 候选分类的 Go 请求；nil 时全部代理 Node。
 	T2IHandler http.Handler
@@ -30,7 +30,7 @@ type Config struct {
 	// WalletViewHandler 仅处理两个已审核的钱包只读 GET 路径；nil 时继续代理 Node。
 	WalletViewHandler http.Handler
 	// WorksHandler 仅处理本人作品列表与单件详情；nil 时继续代理 Node。
-	WorksHandler    http.Handler
+	WorksHandler        http.Handler
 	FeedbackHandler     http.Handler
 	NotificationHandler http.Handler
 	// GenerationStreamHandler 仅处理本地生成状态 SSE；未配置时继续代理 Node。
@@ -42,21 +42,21 @@ type Config struct {
 
 // Gateway 是透明的 /api 兼容代理，不访问业务数据库，也不修改响应信封。
 type Gateway struct {
-	defaultProxy        *httputil.ReverseProxy
-	defaultUpstream     *url.URL
-	routeSwitch         RouteSwitch
-	admissionClient     *http.Client
-	generationCallback  http.Handler
-	paymentCallback     http.Handler
-	paymentEntryHandler http.Handler
-	t2iHandler          http.Handler
-	videoHandler        http.Handler
-	authEntryHandler    http.Handler
-	mediaHandler        http.Handler
-	walletViewHandler   http.Handler
-	worksHandler        http.Handler
-	feedbackHandler     http.Handler
-	notificationHandler http.Handler
+	defaultProxy            *httputil.ReverseProxy
+	defaultUpstream         *url.URL
+	routeSwitch             RouteSwitch
+	admissionClient         *http.Client
+	generationCallback      http.Handler
+	paymentCallback         http.Handler
+	paymentEntryHandler     http.Handler
+	t2iHandler              http.Handler
+	videoHandler            http.Handler
+	authEntryHandler        http.Handler
+	mediaHandler            http.Handler
+	walletViewHandler       http.Handler
+	worksHandler            http.Handler
+	feedbackHandler         http.Handler
+	notificationHandler     http.Handler
 	generationStreamHandler http.Handler
 }
 
@@ -93,6 +93,7 @@ var feedbackRoutes = [...]exactRouteKey{{method: http.MethodPost, path: "/api/fe
 
 var notificationRoutes = [...]exactRouteKey{
 	{method: http.MethodGet, path: "/api/notifications"},
+	{method: http.MethodDelete, path: "/api/notifications"},
 	{method: http.MethodGet, path: "/api/notifications/unread-count"},
 	{method: http.MethodPost, path: "/api/notifications/read-all"},
 	{method: http.MethodPost, path: "/api/notifications/:id/read"},
@@ -107,6 +108,8 @@ func isConfirmedExactRoute(route exactRouteKey) bool {
 		{method: http.MethodPost, path: paymentCallbackPathLegacy},
 		{method: http.MethodPost, path: localCheckoutPath},
 		{method: http.MethodPost, path: localVerifyPurchasePath},
+		{method: http.MethodGet, path: localProductsPath},
+		{method: http.MethodGet, path: localOrderStatusRoute},
 	} {
 		if route == localRoute {
 			return true
@@ -173,21 +176,21 @@ func New(cfg Config) *Gateway {
 		routeSwitch = disabledRouteSwitch{}
 	}
 	return &Gateway{
-		defaultProxy:        newProxy(cfg.DefaultUpstream),
-		defaultUpstream:     cloneURL(cfg.DefaultUpstream),
-		routeSwitch:         routeSwitch,
-		admissionClient:     newAdmissionClient(cfg.AdmissionTimeout),
-		generationCallback:  cfg.GenerationCallback,
-		paymentCallback:     cfg.PaymentCallback,
-		paymentEntryHandler: cfg.PaymentEntryHandler,
-		t2iHandler:          cfg.T2IHandler,
-		videoHandler:        cfg.VideoHandler,
-		authEntryHandler:    cfg.AuthEntryHandler,
-		mediaHandler:        cfg.MediaHandler,
-		walletViewHandler:   cfg.WalletViewHandler,
-		worksHandler:        cfg.WorksHandler,
-		feedbackHandler:     cfg.FeedbackHandler,
-		notificationHandler: cfg.NotificationHandler,
+		defaultProxy:            newProxy(cfg.DefaultUpstream),
+		defaultUpstream:         cloneURL(cfg.DefaultUpstream),
+		routeSwitch:             routeSwitch,
+		admissionClient:         newAdmissionClient(cfg.AdmissionTimeout),
+		generationCallback:      cfg.GenerationCallback,
+		paymentCallback:         cfg.PaymentCallback,
+		paymentEntryHandler:     cfg.PaymentEntryHandler,
+		t2iHandler:              cfg.T2IHandler,
+		videoHandler:            cfg.VideoHandler,
+		authEntryHandler:        cfg.AuthEntryHandler,
+		mediaHandler:            cfg.MediaHandler,
+		walletViewHandler:       cfg.WalletViewHandler,
+		worksHandler:            cfg.WorksHandler,
+		feedbackHandler:         cfg.FeedbackHandler,
+		notificationHandler:     cfg.NotificationHandler,
 		generationStreamHandler: cfg.GenerationStreamHandler,
 	}
 }

@@ -11,6 +11,7 @@ type memoryRepository struct {
 	marked    string
 	all       string
 	deleted   string
+	cleared   string
 }
 
 func (r *memoryRepository) List(_ context.Context, q ListQuery) ([]Item, int, error) {
@@ -30,6 +31,11 @@ func (r *memoryRepository) Delete(_ context.Context, userID, id string) error {
 	return nil
 }
 
+func (r *memoryRepository) DeleteRead(_ context.Context, userID string) (int, error) {
+	r.cleared = userID
+	return 3, nil
+}
+
 func TestUsecaseAlwaysScopesByUser(t *testing.T) {
 	repository := &memoryRepository{}
 	usecase := NewUsecase(repository)
@@ -44,5 +50,18 @@ func TestUsecaseAlwaysScopesByUser(t *testing.T) {
 	}
 	if repository.marked != "user-1:n-1" {
 		t.Fatalf("marked = %q", repository.marked)
+	}
+}
+
+func TestUsecaseDeleteReadAlwaysScopesByCurrentUser(t *testing.T) {
+	repository := &memoryRepository{}
+	usecase := NewUsecase(repository)
+
+	deleted, err := usecase.DeleteRead(context.Background(), "session-user")
+	if err != nil || deleted != 3 {
+		t.Fatalf("deleted=%d err=%v", deleted, err)
+	}
+	if repository.cleared != "session-user" {
+		t.Fatalf("clear user=%q", repository.cleared)
 	}
 }

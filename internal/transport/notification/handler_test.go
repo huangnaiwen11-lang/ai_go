@@ -34,8 +34,13 @@ func (fake *fakeNotificationRepository) MarkRead(_ context.Context, userID, id s
 	fake.readUser, fake.readID = userID, id
 	return nil
 }
-func (fake *fakeNotificationRepository) MarkAllRead(context.Context, string, time.Time) (int, error) { return 1, nil }
-func (fake *fakeNotificationRepository) Delete(context.Context, string, string) error              { return nil }
+func (fake *fakeNotificationRepository) MarkAllRead(context.Context, string, time.Time) (int, error) {
+	return 1, nil
+}
+func (fake *fakeNotificationRepository) Delete(context.Context, string, string) error { return nil }
+func (fake *fakeNotificationRepository) DeleteRead(context.Context, string) (int, error) {
+	return 1, nil
+}
 
 func TestHandlerListUsesSessionUserAndProjectsLegacyFields(t *testing.T) {
 	repository := &fakeNotificationRepository{}
@@ -79,5 +84,22 @@ func TestHandlerRejectsUnauthenticatedRequests(t *testing.T) {
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/notifications", nil))
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d, want 401", recorder.Code)
+	}
+}
+
+func TestHandlerClearReadUsesOnlySessionUserAndRejectsQuery(t *testing.T) {
+	repository := &fakeNotificationRepository{}
+	handler := NewHandler(fakeAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "session-user"}}, biznotification.NewUsecase(repository))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodDelete, "/api/notifications", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodDelete, "/api/notifications?all=1", nil))
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("query status=%d, want 404", recorder.Code)
 	}
 }

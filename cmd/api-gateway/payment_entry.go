@@ -51,10 +51,11 @@ func newConfiguredPaymentEntryHandlerWithCreator(dataConfig *conf.Data, authenti
 		return fail(errors.New("local payment repository is unavailable"))
 	}
 	checkout := payments.NewCheckoutServiceWithPayCores(repository, creator, time.Now)
+	queries := payments.NewReadUsecase(data.NewPaymentReadRepository(storage))
 	if creator != nil {
-		return localpayment.NewHandler(authenticator, checkout, appstore.LocalVerifier{}, checkout), cleanup, nil
+		return localpayment.NewHandlerWithQueries(authenticator, checkout, appstore.LocalVerifier{}, queries, checkout), cleanup, nil
 	}
-	return localpayment.NewHandler(authenticator, checkout, appstore.LocalVerifier{}), cleanup, nil
+	return localpayment.NewHandlerWithQueries(authenticator, checkout, appstore.LocalVerifier{}, queries), cleanup, nil
 }
 
 // paycoresCheckoutCreator 只将领域层冻结的字段转换为 PayCores HTTP 请求。

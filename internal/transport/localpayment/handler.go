@@ -41,6 +41,7 @@ type handler struct {
 	checkout      checkoutUsecase
 	verifier      appstore.Verifier
 	paycores      paycoresCheckoutUsecase
+	queries       queryUsecase
 }
 
 // NewHandler 创建本地支付入口处理器。路由接管权仍由 Gateway 的精确开关控制。
@@ -52,8 +53,16 @@ func NewHandler(authenticator authenticator, checkout checkoutUsecase, verifier 
 	return instance
 }
 
-// ServeHTTP 仅处理现网已有的两条支付 URL。接管后错误不能回退 Node，避免重复下单或重复入账。
+// ServeHTTP 分发受控支付读写 URL。接管后错误不能回退 Node，避免混用订单归属或重复入账。
 func (handler *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	if handler.serveQuery(writer, request) {
+		return
+	}
+	// 查询依赖可独立装配，但不能因此放行缺少建单用例的旧 POST 路径。
+	if handler == nil || handler.checkout == nil {
+		writeError(writer, shared.ErrServiceUnavailable)
+		return
+	}
 	identity, err := handler.authenticate(request)
 	if err != nil {
 		writeError(writer, err)
@@ -74,7 +83,7 @@ func (handler *handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 }
 
 func (handler *handler) authenticate(request *http.Request) (*sessionauth.AuthenticatedIdentity, error) {
-	if handler == nil || handler.authenticator == nil || handler.checkout == nil {
+	if handler == nil || handler.authenticator == nil {
 		return nil, shared.ErrServiceUnavailable
 	}
 	identity, err := handler.authenticator.Authenticate(request)
