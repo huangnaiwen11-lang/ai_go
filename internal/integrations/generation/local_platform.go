@@ -25,14 +25,19 @@ type LocalPlatformOptions struct {
 	HTTPClient      *http.Client
 }
 
+const localCallbackSubmissionGracePeriod = 50 * time.Millisecond
+
 type localPlatformHandler struct {
 	key         string
 	callbackKey string
 	now         func() time.Time
 	callback    bool
-	http        *http.Client
-	mu          sync.Mutex
-	jobs        map[string]SubmissionResult
+	// callbackDelay 仅用于本机模拟器：为 Worker 写入 submitted 状态预留时间，
+	// 防止“中台回调先于本地提交落库”的验收竞态。
+	callbackDelay time.Duration
+	http          *http.Client
+	mu            sync.Mutex
+	jobs          map[string]SubmissionResult
 }
 
 // NewLocalPlatformHandler 创建隔离的本地模拟中台。生产装配不会引用此函数。
@@ -49,7 +54,15 @@ func NewLocalPlatformHandler(options LocalPlatformOptions) http.Handler {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	return &localPlatformHandler{key: strings.TrimSpace(options.RequestHMACKey), callbackKey: callbackKey, now: now, callback: options.Callback, http: httpClient, jobs: make(map[string]SubmissionResult)}
+	return &localPlatformHandler{
+		key:           strings.TrimSpace(options.RequestHMACKey),
+		callbackKey:   callbackKey,
+		now:           now,
+		callback:      options.Callback,
+		callbackDelay: localCallbackSubmissionGracePeriod,
+		http:          httpClient,
+		jobs:          make(map[string]SubmissionResult),
+	}
 }
 
 func (handler *localPlatformHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -84,9 +97,16 @@ func (handler *localPlatformHandler) ServeHTTP(writer http.ResponseWriter, reque
 	}
 	handler.mu.Unlock()
 	if handler.callback {
-		go handler.sendCallback(execution, job)
+		go handler.sendCallbackAfterSubmissionGrace(execution, job)
 	}
 	writeLocalJSON(writer, http.StatusCreated, map[string]any{"success": true, "data": job})
+}
+
+// sendCallbackAfterSubmissionGrace 只服务本机联调。
+// 真实中台在异步任务完成后才回调；本地模拟器立即完成，因此必须模拟其最小异步间隔。
+func (handler *localPlatformHandler) sendCallbackAfterSubmissionGrace(execution Execution, job SubmissionResult) {
+	time.Sleep(handler.callbackDelay)
+	handler.sendCallback(execution, job)
 }
 
 func (handler *localPlatformHandler) lookup(writer http.ResponseWriter, request *http.Request) {

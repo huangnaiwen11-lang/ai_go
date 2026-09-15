@@ -104,6 +104,57 @@ func TestLocalPlatformHandlerSendsSignedCompletionCallback(t *testing.T) {
 	}
 }
 
+// 本地模拟器不能在 HTTP 提交结果尚未被 Worker 持久化前抢先回调。
+// 否则回调会找不到尚处于 ready 状态的步骤，导致端到端验收偶发卡在 pending_submission。
+func TestLocalPlatformHandlerDefersCompletionCallbackAfterSubmissionResponse(t *testing.T) {
+	now := time.Date(2026, 9, 12, 10, 0, 0, 0, time.UTC)
+	key := "local-generation-request-key-for-contract-test-32"
+	callbackSeen := make(chan struct{}, 1)
+	callbackClient := &http.Client{Transport: localRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		callbackSeen <- struct{}{}
+		recorder := httptest.NewRecorder()
+		recorder.WriteHeader(http.StatusOK)
+		return recorder.Result(), nil
+	})}
+	platformHandler := NewLocalPlatformHandler(LocalPlatformOptions{
+		RequestHMACKey:  key,
+		CallbackHMACKey: key,
+		Callback:        true,
+		Now:             func() time.Time { return now },
+		HTTPClient:      callbackClient,
+	})
+	clientTransport := localRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		recorder := httptest.NewRecorder()
+		platformHandler.ServeHTTP(recorder, request)
+		return recorder.Result(), nil
+	})
+	client, err := NewClientWithCallbackOrigin("http://local.platform.test", key, "http://127.0.0.1:18000", &http.Client{Transport: clientTransport}, func() time.Time { return now }, func() string { return "local-platform-deferred-callback-nonce" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	execution, err := BuildExecution(Step{ID: "step-local-platform-deferred-callback", Capability: CapabilityTextToImage, ModelSKU: "ps-image-v1", Input: Input{Prompt: "回调缓冲测试"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Submit(context.Background(), execution); err != nil {
+		t.Fatal(err)
+	}
+
+	// 回调至少应留出一个短缓冲，让提交 Worker 先落库 submitted 状态。
+	select {
+	case <-callbackSeen:
+		t.Fatal("本地完成回调未等待提交状态持久化缓冲")
+	case <-time.After(25 * time.Millisecond):
+	}
+	select {
+	case <-callbackSeen:
+	case <-time.After(time.Second):
+		t.Fatal("未收到延迟后的本地完成回调")
+	}
+}
+
 type localRoundTripFunc func(*http.Request) (*http.Response, error)
 
-func (function localRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) { return function(request) }
+func (function localRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return function(request)
+}
