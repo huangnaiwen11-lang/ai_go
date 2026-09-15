@@ -33,11 +33,17 @@ func (usecase *Usecase) BuildManifest(ctx context.Context, request ManifestReque
 			continue
 		}
 		summaries = append(summaries, TemplateSummary{
-			TemplateID:     template.TemplateID,
-			Version:        template.Version,
-			ContentSurface: template.ContentSurface,
-			ProductMode:    template.ProductMode,
-			SortOrder:      template.SortOrder,
+			TemplateID:      template.TemplateID,
+			Version:         template.Version,
+			ContentSurface:  template.ContentSurface,
+			ProductMode:     template.ProductMode,
+			SortOrder:       template.SortOrder,
+			Title:           template.Title,
+			CoverURL:        template.CoverURL,
+			VideoURL:        template.VideoURL,
+			PreviewVideoURL: template.PreviewVideoURL,
+			Tag:             template.Tag,
+			Badge:           template.Badge,
 		})
 	}
 

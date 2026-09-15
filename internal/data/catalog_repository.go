@@ -56,13 +56,19 @@ func (repository *mongoTemplateRepository) ListEnabled(ctx context.Context) ([]c
 
 func toBizTemplate(document model.TemplateDocument) catalog.Template {
 	return catalog.Template{
-		ID:             document.ID,
-		TemplateID:     document.TemplateID,
-		Version:        document.Version,
-		ContentSurface: catalog.ContentSurface(document.ContentSurface),
-		ProductMode:    catalog.ProductMode(document.Mode),
-		SortOrder:      document.SortOrder,
-		Enabled:        document.Enabled,
+		ID:              document.ID,
+		TemplateID:      document.TemplateID,
+		Version:         document.Version,
+		ContentSurface:  catalog.ContentSurface(document.ContentSurface),
+		ProductMode:     catalog.ProductMode(document.Mode),
+		SortOrder:       document.SortOrder,
+		Enabled:         document.Enabled,
+		Title:           document.Title,
+		CoverURL:        document.CoverURL,
+		VideoURL:        document.VideoURL,
+		PreviewVideoURL: document.PreviewVideoURL,
+		Tag:             document.Tag,
+		Badge:           document.Badge,
 	}
 }
 

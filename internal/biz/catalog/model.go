@@ -45,16 +45,29 @@ type Template struct {
 	ProductMode    ProductMode
 	SortOrder      int32
 	Enabled        bool
+	// 以下字段是跨端一致的用户可见投影；不承载模型、提示词、工作流或结算信息。
+	Title           string
+	CoverURL        string
+	VideoURL        string
+	PreviewVideoURL string
+	Tag             string
+	Badge           string
 }
 
 // TemplateSummary 是向上层交付的用户可见模板摘要。
 // 它刻意不包含技术原子、提示词、模板参数或任何结算字段。
 type TemplateSummary struct {
-	TemplateID     string
-	Version        int64
-	ContentSurface ContentSurface
-	ProductMode    ProductMode
-	SortOrder      int32
+	TemplateID      string
+	Version         int64
+	ContentSurface  ContentSurface
+	ProductMode     ProductMode
+	SortOrder       int32
+	Title           string
+	CoverURL        string
+	VideoURL        string
+	PreviewVideoURL string
+	Tag             string
+	Badge           string
 }
 
 // ManifestRequest 是编译模板清单的调用上下文。

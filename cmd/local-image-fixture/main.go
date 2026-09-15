@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"time"
 
+	"ai-business-service/internal/biz/authcredential"
 	"ai-business-service/internal/biz/catalog"
 	"ai-business-service/internal/biz/entitlement"
 	"ai-business-service/internal/biz/identity"
@@ -30,6 +31,8 @@ const (
 	defaultLocalImageMongoURI = "mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true"
 	imageFixtureTimeout       = 10 * time.Second
 	imageFixtureTimezone      = "Asia/Shanghai"
+	// localImageFixturePassword 只用于本机随机测试账号，不能作为任何正式环境凭据。
+	localImageFixturePassword = "LocalImageFixture2026!"
 )
 
 // imageFixturePersona 把某个本地图片联调用户的身份、会话、账户和订阅集中管理，避免错配 ID。
@@ -37,6 +40,7 @@ type imageFixturePersona struct {
 	User         model.UserDocument
 	Session      model.SessionDocument
 	Account      model.AccountDocument
+	Credential   *model.CredentialDocument
 	Subscription *model.SubscriptionDocument
 }
 
@@ -80,6 +84,8 @@ func localImageMongoConfig(uri string) (*conf.Data, error) {
 
 // newImageFixtureSet 生成不共享账号和会话 ID 的图片联调数据。
 func newImageFixtureSet(now time.Time) imageFixtureSet {
+	prepaid := newImageFixturePersona(now, 20, nil)
+	prepaid.Credential = newLocalImageFixtureCredential(prepaid.User.ID, now)
 	vip := newImageFixturePersona(now, 0, &model.SubscriptionDocument{
 		Status:        string(entitlement.SubscriptionStatusActive),
 		BillingPeriod: string(entitlement.SubscriptionBillingPeriodMonthly),
@@ -89,7 +95,7 @@ func newImageFixtureSet(now time.Time) imageFixtureSet {
 		UpdatedAt:     now,
 	})
 	return imageFixtureSet{
-		Prepaid: newImageFixturePersona(now, 20, nil),
+		Prepaid: prepaid,
 		VIP:     vip,
 		VIPImageQuota: model.DailyQuotaDocument{
 			ID:        "local-vip-image-quota:" + vip.User.ID + ":" + imageFixtureLocalDate(now),
@@ -102,6 +108,32 @@ func newImageFixtureSet(now time.Time) imageFixtureSet {
 		},
 		Freeform:  newSFWFreeformRecipe(now),
 		ImageEdit: newSFWImageEditTemplate(now),
+	}
+}
+
+// localImageFixturePasswordPolicy 与 Gateway 的本地 Argon2id 基线一致，避免 fixture 因为
+// 简化密码哈希而绕开真实登录路径。
+func localImageFixturePasswordPolicy() *authcredential.Policy {
+	return authcredential.MustNewPolicy(authcredential.Params{
+		MemoryKiB: 19456, TimeCost: 2, Parallelism: 1, SaltBytes: 16, KeyBytes: 32,
+	})
+}
+
+// newLocalImageFixtureCredential 为每次随机预扣用户生成独立邮箱和 Argon2id 密码哈希。
+// 明文密码只在构造过程和本地测试命令输出中短暂存在，绝不写入 MongoDB。
+func newLocalImageFixtureCredential(userID string, now time.Time) *model.CredentialDocument {
+	hash, err := localImageFixturePasswordPolicy().Hash(localImageFixturePassword)
+	if err != nil {
+		panic(fmt.Sprintf("hash local image fixture password: %v", err))
+	}
+	return &model.CredentialDocument{
+		ID:              uuid.NewString(),
+		UserID:          userID,
+		EmailNormalized: "local-image-prepaid-" + uuid.NewString() + "@example.test",
+		PasswordHash:    hash,
+		Active:          true,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 }
 
@@ -323,6 +355,11 @@ func insertImageFixtureSet(ctx context.Context, database *mongo.Database, fixtur
 		if _, err := database.Collection(schema.CollectionAccounts).InsertOne(ctx, persona.Account); err != nil {
 			return err
 		}
+		if persona.Credential != nil {
+			if _, err := database.Collection(schema.CollectionCredentials).InsertOne(ctx, *persona.Credential); err != nil {
+				return err
+			}
+		}
 		if persona.Subscription != nil {
 			if _, err := database.Collection(schema.CollectionSubscriptions).InsertOne(ctx, persona.Subscription); err != nil {
 				return err
@@ -342,6 +379,10 @@ func insertImageFixtureSet(ctx context.Context, database *mongo.Database, fixtur
 
 // printImageFixture 仅输出本次测试需要的会话和模板标识，绝不输出连接串或素材地址。
 func printImageFixture(fixture imageFixtureSet) {
+	if fixture.Prepaid.Credential != nil {
+		fmt.Printf("预扣用户邮箱: %s\n", fixture.Prepaid.Credential.EmailNormalized)
+		fmt.Printf("预扣用户密码: %s\n", localImageFixturePassword)
+	}
 	fmt.Printf("预扣用户 Authorization: Bearer %s\n", fixture.Prepaid.Session.ID)
 	fmt.Printf("VIP 用户 Authorization: Bearer %s\n", fixture.VIP.Session.ID)
 	fmt.Printf("T2I 配方 templateId: %s\n", fixture.Freeform.TemplateID)

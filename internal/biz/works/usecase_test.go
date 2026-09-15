@@ -26,6 +26,19 @@ func TestList仅查询会话所属作品且Cursor优先于Skip(t *testing.T) {
 	}
 }
 
+// 全部作品是前端的默认筛选；空 Kind 必须被保留给仓储层表示“不追加输出类型过滤”。
+func TestList全部作品筛选允许空Kind(t *testing.T) {
+	repository := &recordingRepository{page: &works.Page{Items: []works.Work{}}}
+	usecase := works.NewUsecase(repository)
+
+	if _, err := usecase.List(context.Background(), works.ListQuery{UserID: "session-user", Limit: 20}); err != nil {
+		t.Fatalf("空 Kind 的全部作品查询 error = %v", err)
+	}
+	if repository.listCalls != 1 || repository.listQuery.Kind != "" {
+		t.Fatalf("全部作品查询 = %#v，期望以空 Kind 进入仓储", repository.listQuery)
+	}
+}
+
 func TestGet跨用户与缺失作品统一为未找到(t *testing.T) {
 	repository := &recordingRepository{getErr: works.ErrWorkNotFound}
 	usecase := works.NewUsecase(repository)

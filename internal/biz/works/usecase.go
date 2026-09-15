@@ -62,7 +62,8 @@ func (usecase *Usecase) ready() error {
 }
 
 func validListQuery(query ListQuery) bool {
-	if strings.TrimSpace(query.UserID) == "" || (query.Kind != KindImage && query.Kind != KindVideo) || query.Limit < 1 || query.Limit > 100 || query.Skip < 0 {
+	// 空 Kind 是作品页“全部作品”的唯一表示；非空时仍严格限定为两种已迁移输出。
+	if strings.TrimSpace(query.UserID) == "" || (query.Kind != "" && query.Kind != KindImage && query.Kind != KindVideo) || query.Limit < 1 || query.Limit > 100 || query.Skip < 0 {
 		return false
 	}
 	if query.Cursor == "" {

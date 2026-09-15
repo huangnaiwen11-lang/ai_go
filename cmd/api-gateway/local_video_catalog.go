@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"ai-business-service/internal/biz/catalog"
 	"ai-business-service/internal/biz/identity"
@@ -49,16 +50,34 @@ func newLocalVideoTemplateCatalogHandler(authenticator videoCatalogAuthenticator
 			writeVideoCatalogError(writer, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE")
 			return
 		}
-		items := make([]map[string]string, 0)
+		items := make([]videoTemplateCatalogItem, 0)
 		for _, template := range manifest.Templates {
-			if template.ProductMode != catalog.ProductModeTemplateVideo {
+			// 没有展示标题的旧技术记录不能作为可选模板公开，避免把内部模板 ID 呈现给用户。
+			if template.ProductMode != catalog.ProductModeTemplateVideo || strings.TrimSpace(template.Title) == "" {
 				continue
 			}
-			items = append(items, map[string]string{"id": template.TemplateID, "title": template.TemplateID, "type": "video", "contentRating": string(template.ContentSurface)})
+			items = append(items, videoTemplateCatalogItem{
+				ID: template.TemplateID, Title: template.Title, Type: "video", ContentRating: string(template.ContentSurface),
+				CoverURL: template.CoverURL, VideoURL: template.VideoURL, PreviewVideoURL: template.PreviewVideoURL, Tag: template.Tag, Badge: template.Badge,
+			})
 		}
 		writer.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(writer).Encode(map[string]any{"success": true, "data": map[string]any{"items": items, "total": len(items)}})
 	})
+}
+
+// videoTemplateCatalogItem 是视频目录唯一允许出站的展示字段。
+// 技术配方与计费状态在领域层冻结，不能通过这个 DTO 回显。
+type videoTemplateCatalogItem struct {
+	ID              string `json:"id"`
+	Title           string `json:"title"`
+	Type            string `json:"type"`
+	ContentRating   string `json:"contentRating"`
+	CoverURL        string `json:"coverUrl,omitempty"`
+	VideoURL        string `json:"videoUrl,omitempty"`
+	PreviewVideoURL string `json:"previewVideoUrl,omitempty"`
+	Tag             string `json:"tag,omitempty"`
+	Badge           string `json:"badge,omitempty"`
 }
 
 func writeVideoCatalogError(writer http.ResponseWriter, status int, code string) {

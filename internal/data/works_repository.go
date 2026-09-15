@@ -35,16 +35,16 @@ func NewWorksRepository(data *Data) works.Repository {
 	}
 }
 
-// List 先按当前用户和产品类型过滤，再以创建时间与作品 ID 复合倒序分页。
+// List 先按当前用户过滤；Kind 非空时再按产品类型过滤，随后以创建时间与作品 ID 复合倒序分页。
 // user_id 必须是首个过滤条件，防止游标条件或类型条件扩大到其他用户的作品。
 func (repository *mongoWorksRepository) List(ctx context.Context, query works.ListQuery) (*works.Page, error) {
 	if err := repository.ready(); err != nil {
 		return nil, err
 	}
 
-	filter := bson.D{
-		{Key: "user_id", Value: query.UserID},
-		{Key: "product_output", Value: string(query.Kind)},
+	filter := bson.D{{Key: "user_id", Value: query.UserID}}
+	if query.Kind != "" {
+		filter = append(filter, bson.E{Key: "product_output", Value: string(query.Kind)})
 	}
 	findOptions := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}, {Key: "_id", Value: -1}}).SetLimit(int64(query.Limit + 1))
 	if query.Cursor != "" {

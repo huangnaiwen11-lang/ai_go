@@ -75,6 +75,13 @@ func TestMongo作品历史仅返回本人指定类型并投影安全结果(t *te
 	if err != nil || len(videoPage.Items) != 1 || videoPage.Items[0].ID != videoID || videoPage.Items[0].DurationSeconds != 10 {
 		t.Fatalf("video works=%#v err=%v", videoPage, err)
 	}
+	allPage, err := repository.List(ctx, works.ListQuery{UserID: ownerID, Limit: 10})
+	if err != nil {
+		t.Fatalf("全部作品 List() error = %v", err)
+	}
+	if got, want := workIDs(allPage.Items), []string{videoID, succeededID, pendingID, failedID}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("全部作品 = %v, want %v", got, want)
+	}
 	if _, err := repository.FindByID(ctx, ownerID, outsiderWorkID); !errors.Is(err, works.ErrWorkNotFound) {
 		t.Fatalf("跨用户详情 error=%v，want ErrWorkNotFound", err)
 	}

@@ -79,6 +79,36 @@ func TestBuildManifestDoesNotExposeDisabledOrInvalidTemplates(t *testing.T) {
 	}
 }
 
+func TestBuildManifestPreservesPublicPresentationAcrossPlatforms(t *testing.T) {
+	repository := memoryTemplateRepository{templates: []catalog.Template{{
+		ID:              "document-video-showcase",
+		TemplateID:      "video-showcase",
+		Version:         1,
+		ContentSurface:  catalog.ContentSurfaceSFW,
+		ProductMode:     catalog.ProductModeTemplateVideo,
+		SortOrder:       1,
+		Enabled:         true,
+		Title:           "城市漫游",
+		CoverURL:        "https://assets.example.test/video-cover.webp",
+		PreviewVideoURL: "https://assets.example.test/video-preview.mp4",
+		Tag:             "热门",
+		Badge:           "trending",
+	}}}
+	usecase := catalog.NewUsecase(repository)
+
+	manifest, err := usecase.BuildManifest(context.Background(), catalog.ManifestRequest{Platform: catalog.ClientPlatformWeb})
+	if err != nil {
+		t.Fatalf("BuildManifest() error = %v", err)
+	}
+	if len(manifest.Templates) != 1 {
+		t.Fatalf("template count = %d, want 1", len(manifest.Templates))
+	}
+	got := manifest.Templates[0]
+	if got.Title != "城市漫游" || got.CoverURL != "https://assets.example.test/video-cover.webp" || got.PreviewVideoURL != "https://assets.example.test/video-preview.mp4" || got.Tag != "热门" || got.Badge != "trending" {
+		t.Fatalf("presentation = %#v, want complete public metadata", got)
+	}
+}
+
 type memoryTemplateRepository struct {
 	templates []catalog.Template
 }

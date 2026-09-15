@@ -44,6 +44,19 @@ func TestNewImageFixtureSet创建隔离的图片联调数据(t *testing.T) {
 	}
 }
 
+// 浏览器端到端验收不能依赖复制 Bearer Token；预扣身份必须带一份仅本机有效的密码凭据。
+func TestNewImageFixtureSet预扣用户带可验证的本地登录凭据(t *testing.T) {
+	fixture := newImageFixtureSet(time.Date(2026, time.September, 15, 12, 0, 0, 0, time.UTC))
+	credential := fixture.Prepaid.Credential
+	if credential == nil || !credential.Active || credential.UserID != fixture.Prepaid.User.ID || !strings.HasPrefix(credential.EmailNormalized, "local-image-prepaid-") {
+		t.Fatalf("预扣用户本地登录凭据不完整：%#v", credential)
+	}
+	matched, _, err := localImageFixturePasswordPolicy().Verify(credential.PasswordHash, localImageFixturePassword)
+	if err != nil || !matched {
+		t.Fatalf("本地测试密码无法验证：matched=%t err=%v", matched, err)
+	}
+}
+
 func TestLocalImageMongoConfig拒绝非本地连接(t *testing.T) {
 	if _, err := localImageMongoConfig("mongodb://example.com:27017/?replicaSet=rs0"); err == nil {
 		t.Fatal("远程 MongoDB 连接不应被本地图片联调命令接受")

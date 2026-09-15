@@ -14,12 +14,15 @@ import (
 func TestLocalVideoTemplateCatalog只返回公开展示字段(t *testing.T) {
 	handler := newLocalVideoTemplateCatalogHandler(
 		staticCatalogAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "user-1", ContentAccess: "review_restricted"}},
-		staticCatalogReader{manifest: &catalog.Manifest{Templates: []catalog.TemplateSummary{{TemplateID: "video-safe", ProductMode: catalog.ProductModeTemplateVideo, ContentSurface: catalog.ContentSurfaceSFW}}}},
+		staticCatalogReader{manifest: &catalog.Manifest{Templates: []catalog.TemplateSummary{{
+			TemplateID: "video-safe", ProductMode: catalog.ProductModeTemplateVideo, ContentSurface: catalog.ContentSurfaceSFW,
+			Title: "安全视频模板", CoverURL: "https://assets.example.test/video-safe.webp", PreviewVideoURL: "https://assets.example.test/video-safe.mp4",
+		}}}},
 		http.NotFoundHandler(),
 	)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/homepage/video-templates", nil))
-	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"id":"video-safe"`) || strings.Contains(recorder.Body.String(), "model_sku") {
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"id":"video-safe"`) || !strings.Contains(recorder.Body.String(), `"title":"安全视频模板"`) || !strings.Contains(recorder.Body.String(), `"coverUrl":"https://assets.example.test/video-safe.webp"`) || !strings.Contains(recorder.Body.String(), `"previewVideoUrl":"https://assets.example.test/video-safe.mp4"`) || strings.Contains(recorder.Body.String(), "model_sku") {
 		t.Fatalf("视频模板目录响应错误：status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
@@ -27,7 +30,7 @@ func TestLocalVideoTemplateCatalog只返回公开展示字段(t *testing.T) {
 // 未登录用户可以浏览公开 SFW 视频模板，但仍不能绕过创建接口的账号与权益门禁。
 func TestLocalVideoTemplateCatalog未登录时只返回SFW模板(t *testing.T) {
 	reader := &recordingCatalogReader{manifest: &catalog.Manifest{Templates: []catalog.TemplateSummary{
-		{TemplateID: "video-safe", ProductMode: catalog.ProductModeTemplateVideo, ContentSurface: catalog.ContentSurfaceSFW},
+		{TemplateID: "video-safe", ProductMode: catalog.ProductModeTemplateVideo, ContentSurface: catalog.ContentSurfaceSFW, Title: "安全视频模板"},
 	}}}
 	handler := newLocalVideoTemplateCatalogHandler(
 		staticCatalogAuthenticator{},
