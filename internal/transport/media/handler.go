@@ -89,7 +89,7 @@ func (handler *Handler) uploadImage(writer http.ResponseWriter, request *http.Re
 	// 以文件字节检测 MIME，不信任浏览器可伪造的 multipart Content-Type。
 	contentType := http.DetectContentType(content)
 	if !isSupportedImageContentType(contentType) {
-		writeError(writer, http.StatusBadRequest, "INVALID_IMAGE", "仅支持 JPG、PNG 或 WebP 图片")
+		writeError(writer, http.StatusBadRequest, "INVALID_IMAGE", "仅支持 JPG、PNG、WebP 或 GIF 图片")
 		return
 	}
 	image, err := handler.usecase.SaveImage(request.Context(), bizmedia.SaveImageCommand{
@@ -123,7 +123,7 @@ func (handler *Handler) readImage(writer http.ResponseWriter, request *http.Requ
 }
 
 func isSupportedImageContentType(contentType string) bool {
-	return contentType == "image/jpeg" || contentType == "image/png" || contentType == "image/webp"
+	return contentType == "image/jpeg" || contentType == "image/png" || contentType == "image/webp" || contentType == "image/gif"
 }
 
 func writeJSON(writer http.ResponseWriter, status int, payload any) {

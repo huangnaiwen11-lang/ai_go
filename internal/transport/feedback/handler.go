@@ -41,10 +41,12 @@ func (handler *handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 	var body struct {
-		Type        string                   `json:"type"`
-		Message     string                   `json:"message"`
-		Email       string                   `json:"email"`
-		Attachments []bizfeedback.Attachment `json:"attachments"`
+		Type        string `json:"type"`
+		Message     string `json:"message"`
+		Email       string `json:"email"`
+		Attachments []struct {
+			ID string `json:"id"`
+		} `json:"attachments"`
 	}
 	decoder := json.NewDecoder(http.MaxBytesReader(writer, request.Body, 64<<10))
 	decoder.DisallowUnknownFields()
@@ -52,7 +54,12 @@ func (handler *handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		writeError(writer, 400, "INVALID_REQUEST", "Invalid request")
 		return
 	}
-	submission, err := handler.submitter.Submit(request.Context(), bizfeedback.SubmitInput{UserID: identity.UserID, Type: body.Type, Message: body.Message, Email: body.Email, Attachments: body.Attachments})
+	attachments := make([]bizfeedback.Attachment, 0, len(body.Attachments))
+	for _, attachment := range body.Attachments {
+		// 客户端只能提交素材 ID；下载地址必须由 Go 验证归属后生成，避免任意 URL 注入工单。
+		attachments = append(attachments, bizfeedback.Attachment{ID: attachment.ID})
+	}
+	submission, err := handler.submitter.Submit(request.Context(), bizfeedback.SubmitInput{UserID: identity.UserID, Type: body.Type, Message: body.Message, Email: body.Email, Attachments: attachments})
 	if err != nil {
 		if errors.Is(err, bizfeedback.ErrInvalidInput) {
 			writeError(writer, 400, "INVALID_REQUEST", "Invalid request")

@@ -15,15 +15,16 @@ import (
 )
 
 const (
-	registerPath    = "/api/auth/register"
-	loginPath       = "/api/auth/login"
-	guestPath       = "/api/auth/guest"
-	bindPath        = "/api/auth/bind"
-	mePath          = "/api/auth/me"
-	profilePath     = "/api/auth/me/profile"
-	sessionsPath    = "/api/auth/me/sessions"
-	passwordPath    = "/api/auth/me/password"
-	maxRequestBytes = 64 << 10
+	registerPath      = "/api/auth/register"
+	loginPath         = "/api/auth/login"
+	guestPath         = "/api/auth/guest"
+	bindPath          = "/api/auth/bind"
+	mePath            = "/api/auth/me"
+	profilePath       = "/api/auth/me/profile"
+	sessionsPath      = "/api/auth/me/sessions"
+	passwordPath      = "/api/auth/me/password"
+	deleteAccountPath = "/api/auth/me"
+	maxRequestBytes   = 64 << 10
 )
 
 type sessionAuthenticator interface {
@@ -59,6 +60,9 @@ type sessionSecurityUsecase interface {
 }
 type passwordSecurityUsecase interface {
 	ChangePassword(context.Context, string, string, string) error
+}
+type accountDeletionUsecase interface {
+	ChangeAccountStatus(context.Context, string, identity.AccountStatus) (*identity.User, error)
 }
 
 // NewHandler 构造账号入口 Handler；路由注册与本地开关由 Gateway 负责。
@@ -96,9 +100,48 @@ func (handler *handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		handler.revokeSessions(writer, request)
 	case request.Method == http.MethodPost && request.URL.Path == passwordPath:
 		handler.changePassword(writer, request)
+	case request.Method == http.MethodDelete && request.URL.Path == deleteAccountPath:
+		handler.deleteAccount(writer, request)
 	default:
 		writeClientError(writer, http.StatusNotFound, "NOT_FOUND", "Not found")
 	}
+}
+
+// deleteAccount 只作用于当前会话用户。领域层会以事务写入 deleted 状态并撤销全部会话，
+// 因此 HTTP 层既不接受用户 ID，也不执行物理删除或钱包操作。
+func (handler *handler) deleteAccount(writer http.ResponseWriter, request *http.Request) {
+	authenticated, err := handler.authenticate(request)
+	if err != nil {
+		writeError(writer, err)
+		return
+	}
+	if requestBodyHasData(request) {
+		writeError(writer, shared.ErrInvalidRequest)
+		return
+	}
+	usecase, ok := handler.usecase.(accountDeletionUsecase)
+	if !ok {
+		writeError(writer, shared.ErrServiceUnavailable)
+		return
+	}
+	if _, err := usecase.ChangeAccountStatus(request.Context(), authenticated.UserID, identity.AccountStatusDeleted); err != nil {
+		writeError(writer, err)
+		return
+	}
+	writeSuccess(writer, http.StatusOK, map[string]any{"deleted": true})
+}
+
+// requestBodyHasData 同时覆盖已声明长度和 HTTP 分块传输。只读取一个字节即可判断，
+// 避免为了拒绝非法注销请求而读取任意大的请求体。
+func requestBodyHasData(request *http.Request) bool {
+	if request == nil || request.ContentLength > 0 {
+		return request != nil
+	}
+	if request.Body == nil || request.Body == http.NoBody {
+		return false
+	}
+	content, err := io.ReadAll(io.LimitReader(request.Body, 1))
+	return err != nil || len(content) > 0
 }
 
 func (handler *handler) changePassword(writer http.ResponseWriter, request *http.Request) {

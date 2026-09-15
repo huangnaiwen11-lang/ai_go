@@ -101,6 +101,33 @@ func TestBindRejectsRawSubjectAndUnknownFields(t *testing.T) {
 	}
 }
 
+// 用户自助注销只允许删除当前会话所属用户，不能由请求体指定其他用户。
+func TestDeleteAccountUsesCurrentSessionAndRevokesIt(t *testing.T) {
+	usecase := &recordingUsecase{}
+	handler := NewHandler(staticAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "session-user"}}, usecase)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodDelete, "/api/auth/me", nil))
+	if recorder.Code != http.StatusOK || usecase.deletedUserID != "session-user" || usecase.deletedStatus != identity.AccountStatusDeleted {
+		t.Fatalf("delete status=%d user=%q target=%q", recorder.Code, usecase.deletedUserID, usecase.deletedStatus)
+	}
+}
+
+// TestDeleteAccountRejectsChunkedBody 防止 HTTP/1.1 分块请求绕过 Content-Length 校验。
+// 注销目标永远只能来自已认证会话，接口不接受任何客户端数据。
+func TestDeleteAccountRejectsChunkedBody(t *testing.T) {
+	usecase := &recordingUsecase{}
+	handler := NewHandler(staticAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "session-user"}}, usecase)
+	request := httptest.NewRequest(http.MethodDelete, "/api/auth/me", strings.NewReader(`{"userId":"other-user"}`))
+	request.ContentLength = -1
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusBadRequest || usecase.deletedUserID != "" {
+		t.Fatalf("delete status=%d deleted user=%q", recorder.Code, usecase.deletedUserID)
+	}
+}
+
 type authUsecase interface {
 	Register(context.Context, identity.RegisterInput) (*identity.LoginResult, error)
 	LoginWithPassword(context.Context, identity.PasswordLoginInput) (*identity.LoginResult, error)
@@ -120,6 +147,8 @@ type recordingUsecase struct {
 	currentUser    *identity.User
 	bindInput      identity.BindGuestInput
 	bindCalled     bool
+	deletedUserID  string
+	deletedStatus  identity.AccountStatus
 }
 
 func (usecase *recordingUsecase) Register(_ context.Context, input identity.RegisterInput) (*identity.LoginResult, error) {
@@ -141,6 +170,11 @@ func (usecase *recordingUsecase) BindGuest(_ context.Context, input identity.Bin
 	usecase.bindCalled = true
 	usecase.bindInput = input
 	return usecase.currentUser, nil
+}
+func (usecase *recordingUsecase) ChangeAccountStatus(_ context.Context, userID string, status identity.AccountStatus) (*identity.User, error) {
+	usecase.deletedUserID = userID
+	usecase.deletedStatus = status
+	return &identity.User{ID: userID, AccountStatus: status}, nil
 }
 
 type recordingVerifier struct {

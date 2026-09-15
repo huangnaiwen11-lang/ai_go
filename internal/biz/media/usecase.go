@@ -87,7 +87,7 @@ func (usecase *Usecase) OpenOwnedImage(ctx context.Context, ownerID, imageID str
 
 func isAllowedImageContentType(contentType string) bool {
 	switch contentType {
-	case "image/jpeg", "image/png", "image/webp":
+	case "image/jpeg", "image/png", "image/webp", "image/gif":
 		return true
 	default:
 		return false

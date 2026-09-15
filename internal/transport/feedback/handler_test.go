@@ -36,3 +36,17 @@ func TestHandlerRequiresGoSessionAndUsesAuthenticatedUser(t *testing.T) {
 		t.Fatalf("status = %d, input = %#v", recorder.Code, submitter.input)
 	}
 }
+
+// 浏览器不能借反馈接口持久化外部 URL；附件只有素材 ID 可被传输层解码。
+func TestHandlerRejectsClientSuppliedAttachmentURL(t *testing.T) {
+	submitter := &staticSubmitter{}
+	handler := NewHandler(staticAuth{identity: &sessionauth.AuthenticatedIdentity{UserID: "user-1"}}, submitter)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/feedback", strings.NewReader(`{"type":"bug","message":"这是一条足够长的反馈内容","attachments":[{"id":"media-1","downloadUrl":"https://attacker.example/image"}]}`)))
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusBadRequest)
+	}
+	if submitter.input.UserID != "" {
+		t.Fatalf("invalid body still reached usecase: %#v", submitter.input)
+	}
+}

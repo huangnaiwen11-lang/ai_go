@@ -87,6 +87,7 @@ var authEntryRoutes = [...]exactRouteKey{
 	{method: http.MethodPatch, path: "/api/auth/me/profile"},
 	{method: http.MethodDelete, path: "/api/auth/me/sessions"},
 	{method: http.MethodPost, path: "/api/auth/me/password"},
+	{method: http.MethodDelete, path: "/api/auth/me"},
 }
 
 var feedbackRoutes = [...]exactRouteKey{{method: http.MethodPost, path: "/api/feedback"}}
