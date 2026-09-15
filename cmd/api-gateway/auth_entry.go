@@ -10,6 +10,7 @@ import (
 
 	"ai-business-service/internal/biz/authcredential"
 	"ai-business-service/internal/biz/identity"
+	bizmedia "ai-business-service/internal/biz/media"
 	"ai-business-service/internal/conf"
 	"ai-business-service/internal/data"
 	transportauth "ai-business-service/internal/transport/authentry"
@@ -40,7 +41,8 @@ func newConfiguredAuthEntryHandler(dataConfig *conf.Data, securityConfig *conf.S
 		return fail(fmt.Errorf("initialize local MongoDB schema: %w", err))
 	}
 	usecase := identity.NewAuthUsecase(data.NewAuthUserRepository(storage), data.NewIdentityRepository(storage), data.NewAuthSessionRepository(storage), data.NewAccountRepository(storage), data.NewCredentialRepository(storage), policy, data.NewTxRunner(storage))
-	return transportauth.NewHandlerWithBinding(authenticator, usecase, localBindingVerifier()), cleanup, nil
+	images := bizmedia.NewUsecase(data.NewLocalUserMediaRepository(storage, localMediaDirectory()))
+	return transportauth.NewHandlerWithProfileImages(authenticator, usecase, localBindingVerifier(), images), cleanup, nil
 }
 
 // localBindingVerifier 只在显式本地开关和 local- 前缀密钥同时存在时装配。

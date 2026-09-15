@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"ai-business-service/internal/biz/identity"
+	bizmedia "ai-business-service/internal/biz/media"
 	"ai-business-service/internal/biz/shared"
 	"ai-business-service/internal/transport/sessionauth"
 )
@@ -49,10 +50,14 @@ type handler struct {
 	authenticator sessionAuthenticator
 	usecase       entryUsecase
 	verifier      bindingVerifier
+	profileImages interface {
+		OpenOwnedImage(context.Context, string, string) (*bizmedia.Image, []byte, error)
+	}
 }
 
 type profileUsecase interface {
 	UpdateDisplayName(context.Context, string, string) (*identity.User, error)
+	UpdateProfile(context.Context, string, identity.ProfileUpdate) (*identity.User, error)
 }
 
 type sessionSecurityUsecase interface {
@@ -74,6 +79,13 @@ func NewHandler(authenticator sessionAuthenticator, usecase entryUsecase) http.H
 // verifier 为空时仍可提供登录、注册和游客入口，但绑定路由会返回服务不可用，避免降级为不安全的裸 subject。
 func NewHandlerWithBinding(authenticator sessionAuthenticator, usecase entryUsecase, verifier bindingVerifier) http.Handler {
 	return &handler{authenticator: authenticator, usecase: usecase, verifier: verifier}
+}
+
+// NewHandlerWithProfileImages 在资料页显式提交头像时验证素材归属。
+func NewHandlerWithProfileImages(authenticator sessionAuthenticator, usecase entryUsecase, verifier bindingVerifier, images interface {
+	OpenOwnedImage(context.Context, string, string) (*bizmedia.Image, []byte, error)
+}) http.Handler {
+	return &handler{authenticator: authenticator, usecase: usecase, verifier: verifier, profileImages: images}
 }
 
 // ServeHTTP 仅处理四条精确账号路由。Gateway 接管后不允许重放 Node，避免注册或登录
@@ -218,13 +230,32 @@ func (handler *handler) profile(writer http.ResponseWriter, request *http.Reques
 		return
 	}
 	var body struct {
-		DisplayName string `json:"displayName"`
+		DisplayName   string  `json:"displayName"`
+		Bio           *string `json:"bio"`
+		AvatarImageID *string `json:"avatarImageId"`
 	}
 	if err := decodeStrictJSON(request, &body); err != nil {
 		writeError(writer, shared.ErrInvalidRequest)
 		return
 	}
-	user, err := usecase.UpdateDisplayName(request.Context(), authenticated.UserID, body.DisplayName)
+	// 旧前端只提交 displayName 时保持“只改昵称”语义；只有显式带 bio 才更新简介。
+	var user *identity.User
+	if body.Bio == nil {
+		user, err = usecase.UpdateDisplayName(request.Context(), authenticated.UserID, body.DisplayName)
+	} else {
+		if body.AvatarImageID != nil {
+			if handler.profileImages == nil {
+				writeError(writer, shared.ErrServiceUnavailable)
+				return
+			}
+			image, _, imageErr := handler.profileImages.OpenOwnedImage(request.Context(), authenticated.UserID, *body.AvatarImageID)
+			if imageErr != nil || image == nil {
+				writeError(writer, shared.ErrInvalidRequest)
+				return
+			}
+		}
+		user, err = usecase.UpdateProfile(request.Context(), authenticated.UserID, identity.ProfileUpdate{DisplayName: body.DisplayName, Bio: *body.Bio, AvatarImageID: body.AvatarImageID})
+	}
 	if err != nil {
 		writeError(writer, err)
 		return
@@ -376,7 +407,7 @@ func safeUser(user *identity.User) map[string]any {
 	if user == nil {
 		return nil
 	}
-	return map[string]any{"id": user.ID, "displayName": user.DisplayName, "bindingState": user.BindingState, "accountStatus": user.AccountStatus, "contentAccess": user.ContentAccess, "timezone": user.Timezone, "isGuest": user.BindingState == identity.BindingStateGuest}
+	return map[string]any{"id": user.ID, "displayName": user.DisplayName, "bio": user.Bio, "avatarImageId": user.AvatarImageID, "bindingState": user.BindingState, "accountStatus": user.AccountStatus, "contentAccess": user.ContentAccess, "timezone": user.Timezone, "isGuest": user.BindingState == identity.BindingStateGuest}
 }
 
 func writeSuccess(writer http.ResponseWriter, status int, data any) {

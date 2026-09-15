@@ -6,6 +6,8 @@ import "time"
 type UserDocument struct {
 	ID             string    `bson:"_id"`
 	DisplayName    string    `bson:"display_name,omitempty"`
+	Bio            string    `bson:"bio,omitempty"`
+	AvatarImageID  string    `bson:"avatar_image_id,omitempty"`
 	AccountStatus  string    `bson:"account_status"`
 	BindingState   string    `bson:"binding_state"`
 	Timezone       string    `bson:"timezone"`

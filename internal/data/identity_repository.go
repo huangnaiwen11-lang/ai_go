@@ -51,6 +51,20 @@ func (repository *mongoUserRepository) UpdateDisplayName(ctx context.Context, us
 	return toBizUser(document), nil
 }
 
+// UpdateProfile 仅持久化资料领域允许的昵称和简介，不能越权修改账户或时区事实。
+func (repository *mongoUserRepository) UpdateProfile(ctx context.Context, userID, displayName, bio string, avatarImageID *string, updatedAt time.Time) (*identity.User, error) {
+	var document model.UserDocument
+	fields := bson.D{{Key: "display_name", Value: displayName}, {Key: "bio", Value: bio}, {Key: "updated_at", Value: updatedAt}}
+	if avatarImageID != nil {
+		fields = append(fields, bson.E{Key: "avatar_image_id", Value: *avatarImageID})
+	}
+	err := repository.collection.FindOneAndUpdate(ctx, bson.D{{Key: "_id", Value: userID}, {Key: "account_status", Value: string(identity.AccountStatusNormal)}}, bson.D{{Key: "$set", Value: fields}}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&document)
+	if err != nil {
+		return nil, mapUserReadError(err)
+	}
+	return toBizUser(document), nil
+}
+
 // NewIdentityRepository 返回外部身份仓储的领域接口实现。
 func NewIdentityRepository(data *Data) identity.IdentityRepository {
 	return &mongoIdentityRepository{collection: data.database.Collection(schema.CollectionIdentities)}
@@ -289,7 +303,7 @@ func newIdentityDocument(externalIdentity identity.ExternalIdentity) model.Ident
 }
 
 func newUserDocument(user identity.User) model.UserDocument {
-	return model.UserDocument{ID: user.ID, DisplayName: user.DisplayName, AccountStatus: string(user.AccountStatus), BindingState: string(user.BindingState), Timezone: user.Timezone, GuestPlatform: user.GuestPlatform, GuestDeviceID: user.GuestDeviceID, SessionVersion: user.SessionVersion, ContentAccess: user.ContentAccess, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt}
+	return model.UserDocument{ID: user.ID, DisplayName: user.DisplayName, Bio: user.Bio, AvatarImageID: user.AvatarImageID, AccountStatus: string(user.AccountStatus), BindingState: string(user.BindingState), Timezone: user.Timezone, GuestPlatform: user.GuestPlatform, GuestDeviceID: user.GuestDeviceID, SessionVersion: user.SessionVersion, ContentAccess: user.ContentAccess, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt}
 }
 
 func newSessionDocument(session identity.Session) model.SessionDocument {
@@ -304,6 +318,8 @@ func toBizUser(document model.UserDocument) *identity.User {
 	return &identity.User{
 		ID:             document.ID,
 		DisplayName:    document.DisplayName,
+		Bio:            document.Bio,
+		AvatarImageID:  document.AvatarImageID,
 		AccountStatus:  identity.AccountStatus(document.AccountStatus),
 		BindingState:   identity.BindingState(document.BindingState),
 		Timezone:       document.Timezone,

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ai-business-service/internal/biz/identity"
+	bizmedia "ai-business-service/internal/biz/media"
 	"ai-business-service/internal/biz/shared"
 	"ai-business-service/internal/transport/sessionauth"
 )
@@ -104,12 +105,18 @@ func TestBindRejectsRawSubjectAndUnknownFields(t *testing.T) {
 // 用户自助注销只允许删除当前会话所属用户，不能由请求体指定其他用户。
 func TestDeleteAccountUsesCurrentSessionAndRevokesIt(t *testing.T) {
 	usecase := &recordingUsecase{}
-	handler := NewHandler(staticAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "session-user"}}, usecase)
+	handler := NewHandlerWithProfileImages(staticAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "session-user"}}, usecase, nil, ownedProfileImage{})
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodDelete, "/api/auth/me", nil))
 	if recorder.Code != http.StatusOK || usecase.deletedUserID != "session-user" || usecase.deletedStatus != identity.AccountStatusDeleted {
 		t.Fatalf("delete status=%d user=%q target=%q", recorder.Code, usecase.deletedUserID, usecase.deletedStatus)
 	}
+}
+
+type ownedProfileImage struct{}
+
+func (ownedProfileImage) OpenOwnedImage(_ context.Context, userID, imageID string) (*bizmedia.Image, []byte, error) {
+	return &bizmedia.Image{ID: imageID, OwnerID: userID}, []byte{1}, nil
 }
 
 // TestDeleteAccountRejectsChunkedBody 防止 HTTP/1.1 分块请求绕过 Content-Length 校验。
@@ -125,6 +132,31 @@ func TestDeleteAccountRejectsChunkedBody(t *testing.T) {
 
 	if recorder.Code != http.StatusBadRequest || usecase.deletedUserID != "" {
 		t.Fatalf("delete status=%d deleted user=%q", recorder.Code, usecase.deletedUserID)
+	}
+}
+
+// TestProfileAcceptsBioAlongsideDisplayName 锁定旧资料页的昵称和简介保存语义。
+// 请求没有用户 ID，资料只能写入当前 Go 会话用户。
+func TestProfileAcceptsBioAlongsideDisplayName(t *testing.T) {
+	usecase := &recordingUsecase{}
+	handler := NewHandler(staticAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "session-user"}}, usecase)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPatch, "/api/auth/me/profile", strings.NewReader(`{"displayName":"新昵称","bio":"这是简介"}`)))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("profile status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+// TestProfileAcceptsOwnedAvatarImageID 头像合同只接受本方素材 ID，不能保存外部 URL。
+func TestProfileAcceptsOwnedAvatarImageID(t *testing.T) {
+	usecase := &recordingUsecase{}
+	handler := NewHandlerWithProfileImages(staticAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "session-user"}}, usecase, nil, ownedProfileImage{})
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPatch, "/api/auth/me/profile", strings.NewReader(`{"displayName":"新昵称","bio":"简介","avatarImageId":"owned-image"}`)))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("profile status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
 
@@ -149,6 +181,16 @@ type recordingUsecase struct {
 	bindCalled     bool
 	deletedUserID  string
 	deletedStatus  identity.AccountStatus
+}
+
+func (usecase *recordingUsecase) UpdateProfile(_ context.Context, userID string, input identity.ProfileUpdate) (*identity.User, error) {
+	usecase.currentUserID = userID
+	return &identity.User{ID: userID, DisplayName: input.DisplayName, Bio: input.Bio, AccountStatus: identity.AccountStatusNormal, BindingState: identity.BindingStateBound, ContentAccess: identity.ContentAccessStandard}, nil
+}
+
+func (usecase *recordingUsecase) UpdateDisplayName(_ context.Context, userID, displayName string) (*identity.User, error) {
+	usecase.currentUserID = userID
+	return &identity.User{ID: userID, DisplayName: displayName, AccountStatus: identity.AccountStatusNormal, BindingState: identity.BindingStateBound, ContentAccess: identity.ContentAccessStandard}, nil
 }
 
 func (usecase *recordingUsecase) Register(_ context.Context, input identity.RegisterInput) (*identity.LoginResult, error) {

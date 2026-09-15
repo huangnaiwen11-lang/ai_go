@@ -35,8 +35,12 @@ const (
 // User 是身份模块拥有的用户领域对象。
 // Timezone 只在首次创建用户时写入，后续绑定和状态变更不得修改。
 type User struct {
-	ID             string
-	DisplayName    string
+	ID          string
+	DisplayName string
+	// Bio 是用户主动填写的公开简介，最大 200 个字符。
+	Bio string
+	// AvatarImageID 仅保存当前用户拥有的 Go 素材 ID，不保存外部 URL。
+	AvatarImageID  string
 	AccountStatus  AccountStatus
 	BindingState   BindingState
 	Timezone       string
