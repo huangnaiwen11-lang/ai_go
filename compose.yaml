@@ -1,0 +1,82 @@
+name: ai-business-service
+
+services:
+  mongo:
+    image: mongo:8.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      # 仅开放给本机 Go 测试，禁止暴露到局域网或公网。
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  mongo-init:
+    image: mongo:8.0
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        max_attempts=30
+        attempt=1
+        while [ "$$attempt" -le "$$max_attempts" ]; do
+          if mongosh --host mongo:27017 --quiet --eval "
+            try {
+              const status = rs.status();
+              if (status.myState !== 1) {
+                throw new Error('replica set is not PRIMARY: ' + status.myState);
+              }
+            } catch (error) {
+              if (error.code === 94 || error.codeName === 'NotYetInitialized') {
+                rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]});
+                throw new Error('replica set initialized; waiting for PRIMARY');
+              }
+              throw error;
+            }
+          "; then
+            exit 0
+          fi
+          if [ "$$attempt" -eq "$$max_attempts" ]; then
+            echo "mongo-init timed out waiting for rs0 PRIMARY after $${max_attempts} attempts" >&2
+            exit 1
+          fi
+          echo "mongo-init waiting for rs0 PRIMARY (attempt $${attempt}/$${max_attempts})" >&2
+          attempt=$$((attempt + 1))
+          sleep 2
+        done
+    restart: "no"
+
+  app:
+    image: ai-business-service:local
+    build:
+      context: .
+      args:
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:18000:18000"
+      - "127.0.0.1:19000:19000"
+    volumes:
+      # 容器内必须通过 Docker 服务名连接 MongoDB，不能复用宿主机地址。
+      - ./configs/config.docker.yaml:/data/conf/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:18000/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  mongo-data:

@@ -1,0 +1,526 @@
+{
+  "schemaVersion": 1,
+  "sourceOfTruth": "Node backend contract, Go Gateway contract tests, and local byte-level baseline",
+  "rule": "只有“确认迁移”条目可编译为任一阶段的 Go 精确路由；静态扫描候选在完整契约、语义基线、回滚开关和责任人齐备前一律不得迁移。",
+  "entries": [
+    {
+      "method": "GET",
+      "path": "/api/growth/ping",
+      "classification": "确认迁移",
+      "evidence": [
+        "Node 路由注册：backend/src/modules/growth/growth.routes.js 的 router.get('/ping', ...)",
+        "Node 全局限流跳过策略：backend/src/middleware/globalRateLimitPolicy.js 未将 /api/growth/ping 列为运维、可缓存公开读取或最佳努力信号跳过项",
+        "Node 全局限流：backend/src/server.js 以 prefix: 'global' 注册 limiter；backend/src/middleware/rateLimiterFactory.js 在 Redis store 可用时使用 ratelimit:global: 命名空间",
+        "Gateway 准入与回退契约测试：internal/gateway/proxy_test.go 的 TestHandlerRelaysNodeRateLimitBeforeLocalPing、TestHandlerUsesNodeAdmissionBeforeLocalPing、TestHandlerFallsBackWhenFileRouteSwitchFailsClosed",
+        "文件开关 fail-closed 契约测试：internal/gateway/route_switch_test.go",
+        "Node 与 Gateway 本机 GET /api/growth/ping 冻结成功响应字节级基线一致"
+      ],
+      "authentication": "无 requireAuth；中性 Bearer 头在 Node 回退路径中保持透传。",
+      "requestExample": {
+        "X-Request-Id": "gateway-growth-ping-baseline"
+      },
+      "responseExample": {
+        "success": true,
+        "data": {
+          "ok": true
+        }
+      },
+      "dataDependencies": {
+        "dependencies": [
+          "Node 全局限流准入：Gateway 先向 DefaultUpstream 发送一次同 method/path 的请求，沿用可信客户端 IP 与请求头语义。",
+          "Redis 限流命名空间语义：Node 的全局 limiter 使用 prefix 'global'；Redis store 可用时对应 ratelimit:global:，由 Node 持有并计数，Gateway 不直接访问 Redis。"
+        ],
+        "rationale": "即使冻结成功响应最终由 Gateway 回放，Node 仍先精确消耗一次全局限流配额并保留其 429/限流头语义；因此该路由不是“无依赖”的固定本地 handler。"
+      },
+      "errorCodes": {
+        "codes": [
+          "RATE_LIMITED",
+          "UPSTREAM_BAD_RESPONSE",
+          "UPSTREAM_TIMEOUT"
+        ],
+        "rationale": "Node 准入返回 429 时，Gateway 逐字节透传 RATE_LIMITED envelope 与端到端限流头；Gateway 无法取得准入响应或完整读取冻结 ping 前缀时，返回 Node 兼容的 502 UPSTREAM_BAD_RESPONSE。仅 context.DeadlineExceeded 或任意 net.Error.Timeout() == true（包括包装错误）返回 504 UPSTREAM_TIMEOUT。该本机契约仍缺客户端取消的受控运行证据，以及生产超时、XFF 和灰度分流证据，不能开放通用流量。"
+      },
+      "callVolume": "仅本机验证，未开启生产用户流量",
+      "targetService": "Go API Gateway",
+      "semanticBaseline": "gateway-growth-ping",
+      "rollbackSwitch": "将 GATEWAY_EXACT_ROUTE_SWITCH_FILE 指向的本地 JSON 原子替换为 {\"routes\":{\"GET /api/growth/ping\":false}}；后续请求无需重启即回退 Node。文件不可用、畸形或包含未知键时同样 fail-closed 回退 Node。",
+      "owner": "API Platform"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homepage/video-templates",
+      "classification": "待核实",
+      "evidence": [
+        "前端调用：frontend/src/api/homepage.ts 的 homepageApi.getVideoTemplates",
+        "前端首屏请求：frontend/index.html 的 category=all&limit=24 bootstrap",
+        "Node 路由：backend/src/modules/homepage/homepage.routes.js 的 router.get('/video-templates', optionalAuth, ...)"
+      ],
+      "blockingReason": "尚未冻结匿名与 optionalAuth、category/limit/offset/maxRating、内容审核策略、缓存/Vary/429 语义，以及 Go 侧对 HomepageContentConfig、PlatformConfig 与 User 审核字段的只读数据所有权。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/homepage/video-templates",
+      "classification": "待核实",
+      "evidence": [
+        "Node 同时挂载 /api 和 /api/v1：backend/src/bootstrap/registerApiRoutes.js",
+        "ai-business-service/cmd/catalog-contract-replay 覆盖 /api 与 /api/v1 的匿名读取候选"
+      ],
+      "blockingReason": "需与 /api 版本一起冻结为两个独立精确路由；当前 Go 回放工具尚无 Catalog 候选服务，且未覆盖 authenticated、审核策略和限流链路。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/generations/stream",
+      "classification": "待核实",
+      "evidence": [
+        "前端 EventSource：frontend/src/hooks/useGenerationLifecycleStream.ts",
+        "Node 路由：backend/src/modules/user/user.public.routes.js",
+        "Node 流服务：backend/src/modules/user/profile-generation-stream.service.js"
+      ],
+      "blockingReason": "尚未冻结 header 优先的 query token 兼容、真实 SSE framing、跨进程 Redis 事件、断线补偿与连接竞争窗口。当前 Node 在订阅建立与首个 snapshot 之间没有 barrier，可能先发 change；不得将“snapshot 一定先到”误登记为既有事实。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/image/async",
+      "capabilities": [
+        "T2I",
+        "I2I"
+      ],
+      "classification": "待核实",
+      "evidence": [
+        "前端调用：frontend/src/api/chat.ts 的 chatApi.startImageAsync",
+        "前端产品入口：frontend/src/features/createImage/useCreateImageGeneration.ts；无 inputImages 时为 T2I，存在 1–2 张 inputImages 时为 I2I",
+        "Node 路由：backend/src/modules/chat/chat.routes.image.js 的 POST /image/async，含 requireAuth、requireGenerationEligibleAccount、sensitiveLimiter 与请求校验",
+        "Node 提交链路：backend/src/modules/chat/image-generation-submission.service.js 对 GeneratedImage 版本钉死、幂等键、generation-service 提交与 callback 竞争进行收敛",
+        "本机合同测试：backend/src/modules/chat/image-generation-submission.service.test.js、image-generation-convergence.arch.test.js 覆盖单次提交、版本固定、callback 竞争与 web 进程不直接执行 GPU"
+      ],
+      "blockingReason": "T2I 与 I2I 共用同一付费写路由，必须分别冻结 inputImages 边界、内容策略、扣费/退款、GeneratedImage 状态机、版本钉死、generation-service 幂等提交与 callback 竞争。没有数据所有者、真实回调和结算语义基线前，Go 不得新增路由、写入方或切换流量。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/video",
+      "scope": {
+        "field": "imageUrl",
+        "presence": "required",
+        "meaning": "仅记录 I2V 分支；同一路径的 prompt-only T2V 分支不因本条获得迁移资格。"
+      },
+      "capabilities": [
+        "I2V"
+      ],
+      "classification": "待核实",
+      "evidence": [
+        "前端调用：frontend/src/api/chat.ts 的 chatApi.startVideo",
+        "前端产品入口：frontend/src/features/createVideo/hooks/useCreateVideoGeneration.ts 在非 text sourceMode 时提交 imageUrl",
+        "Node 路由：backend/src/modules/chat/chat.routes.video.js 的 POST /video，含 requireAuth、requireGenerationEligibleAccount、sensitiveLimiter 与请求校验",
+        "Node 编排入口：backend/src/modules/chat/video-start.service.js 先执行订阅能力限制，再调用 videoService.startGeneration；generation-service 继续负责 GPU/provider 执行",
+        "本机合同测试：backend/src/modules/chat/video-start.service.test.js、chat.routes.video.batch.test.js 覆盖订阅限制、I2V 参数透传与认证用户的有界批量状态读取"
+      ],
+      "blockingReason": "I2V 必须先冻结 imageUrl、附加参考图、工作流模式、订阅限制、扣费/退款、任务状态、取消、generation-service 提交与 callback 幂等语义。没有唯一写入方、真实运行回调和结算基线前，Go 不得新增路由、写入方或切换流量。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/animate/cost",
+      "classification": "候选淘汰",
+      "evidence": [
+        "Node 路由：backend/src/modules/animate/animate.routes.js 的 GET /cost",
+        "Node 存量 Animate 服务：backend/src/modules/animate/animate.service.js"
+      ],
+      "blockingReason": "后续产品决策取消 Animate Go 迁移。存量历史成本查询继续 Node-only 处理；不得新增 Go 路由、写入方或结算协调。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/animate/start",
+      "classification": "候选淘汰",
+      "evidence": [
+        "前端调用：frontend/src/features/animate/hooks/useAnimateGeneration.ts",
+        "Node 路由与服务：backend/src/modules/animate/animate.routes.js、animate.service.js",
+        "任务协议：Animate 固定 generationExecutionContractVersion=legacy.v1"
+      ],
+      "blockingReason": "后续产品决策已停止 Animate 新建与重试，并明确取消以 Animate 为首个 Go Generation Orchestrator 的迁移切片。历史任务仍由 Node 处理只读查询、已签名 callback、去重、退款与结算收敛；不得新增 Go 路由或写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/animate/status/:taskId",
+      "classification": "候选淘汰",
+      "evidence": [
+        "前端轮询：frontend/src/hooks/creations/useMyStatusTaskCreations.ts",
+        "Node 实现：backend/src/modules/animate/animate.service.js 的状态查询"
+      ],
+      "blockingReason": "后续产品决策取消 Animate Go 迁移。该历史只读路径继续由 Node 维护任务归属、结果投影与在途收敛；不得将静态代码证据误解为新的 Go 分流许可。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/animate/history",
+      "classification": "候选淘汰",
+      "evidence": [
+        "前端轮询：frontend/src/hooks/creations/useMyStatusTaskCreations.ts",
+        "Node 生命周期投影：backend/src/modules/animate/animate.lifecycle.js"
+      ],
+      "blockingReason": "后续产品决策取消 Animate Go 迁移。历史读取仍需由 Node 保持，直至存量任务和回调结算自然收敛；本条目不能进入 Go 路由或服务清单。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/animate/cancel/:taskId",
+      "classification": "候选淘汰",
+      "evidence": [
+        "前端 API：frontend/src/api/animate.ts",
+        "Node 生命周期实现与测试：backend/src/modules/animate/animate.lifecycle.js、animate.lifecycle.test.js"
+      ],
+      "blockingReason": "后续产品决策取消 Animate Go 迁移。存量取消与终态退款继续由 Node 和 generation-service 的既有协议收敛；不得让 Go 成为新的写入方。"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/animate/:taskId",
+      "classification": "候选淘汰",
+      "evidence": [
+        "Node 路由：backend/src/modules/animate/animate.routes.js 的 DELETE /:taskId",
+        "Node 存量 Animate 服务：backend/src/modules/animate/animate.service.js"
+      ],
+      "blockingReason": "后续产品决策取消 Animate Go 迁移。存量历史删除继续 Node-only 处理；删除不产生 Go 写入或结算职责，且不得新增 Go 路由、写入方或结算协调。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/animate/refund/:taskId",
+      "classification": "候选淘汰",
+      "evidence": [
+        "Node 路由：backend/src/modules/animate/animate.routes.js 的 POST /refund/:taskId",
+        "Node 存量 Animate 服务：backend/src/modules/animate/animate.service.js"
+      ],
+      "blockingReason": "后续产品决策取消 Animate Go 迁移。存量历史退款继续 Node-only 处理；退款不产生 Go 写入或结算职责，且不得新增 Go 路由、写入方或结算协调。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/creations/retry",
+      "scope": {
+        "typeField": "type",
+        "equals": "animate"
+      },
+      "classification": "候选淘汰",
+      "evidence": [
+        "前端调用候选：frontend/src/api/creations.ts",
+        "静态调用候选和 Node 路由注册扫描：docs/audit/api-inventory.generated.json"
+      ],
+      "blockingReason": "仅当请求体 type=animate 时，后续产品决策取消该重试分支的 Go 迁移。其他 type 分支尚未完成契约核验，仍为待核实，不能将整个 /api/creations/retry 路由判为淘汰或交由 Go 接管。已存在的 Animate 重试、回调、去重、退款与结算语义继续由 Node 收敛。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/internal/generation-callback",
+      "classification": "待核实",
+      "evidence": [
+        "generation-service 回调目标与 HMAC 路径：generation-service/src/runtime/service-boundary-config.js",
+        "Node 路由与认证：backend/src/modules/generation-callback/generation-callback.routes.js、generation-callback-auth.service.js",
+        "回调 outbox 测试：generation-service/src/services/callback.test.js"
+      ],
+      "blockingReason": "必须先以非破坏性运行验证 HMAC 密钥/租户、nonce、delivery/fingerprint 去重、Mongo 任务归属、结算与回调 outbox 重试的真实部署状态；不得仅凭静态代码切换写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/upload/ugc/presign",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/upload/upload.routes.js 的 POST /ugc/presign，使用 requireAuth。",
+        "Node 上传分支：视频走直传，图片仍走服务端净化处理。"
+      ],
+      "blockingReason": "R2 对象权限、presign TTL 与真实 PUT 的成功和错误合同尚未冻结；在认证、对象归属及回滚基线核实前，Go 不得分流该路由，也不得引入上传相关的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/auth/auth.routes.js 的 POST /register。",
+        "注册流程受 Cloudflare guard、限流/锁定与审计保护。"
+      ],
+      "blockingReason": "JWT、OAuth 与账号状态的真实合同尚未冻结；在认证状态、限流锁定和审计基线核实前，Go 不得分流身份路由，也不得引入账号状态或审计的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/auth/auth.routes.js 的 POST /login。",
+        "登录流程受 Cloudflare guard、限流/锁定与审计保护。"
+      ],
+      "blockingReason": "JWT、OAuth 与账号状态的真实合同尚未冻结；在认证状态、限流锁定和审计基线核实前，Go 不得分流身份路由，也不得引入账号状态或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/auth/auth.routes.js 的 GET /me。",
+        "当前身份读取仍依赖 Node 持有的 JWT、OAuth 与账号状态合同。"
+      ],
+      "blockingReason": "JWT、OAuth 与账号状态的真实合同尚未冻结；在认证状态和会话语义基线核实前，Go 不得分流身份路由，也不得引入账号状态或审计的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/guest",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node 路由：backend/src/modules/auth/auth.routes.js 的 POST /guest，含平台、设备与限流语义。"
+      ],
+      "blockingReason": "Guest 的平台限制、设备身份、加密请求、账号升级与审计语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入账号状态、会话或审计的新增写入方。"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/auth/me/push-token",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node 路由：backend/src/modules/auth/auth.routes.js 的 PUT /me/push-token。"
+      ],
+      "blockingReason": "Push Token 的账号、设备、应用归属和重复提交语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入账号状态、设备或审计的新增写入方。"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/auth/me/push-token",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node 路由：backend/src/modules/auth/auth.routes.js 的 DELETE /me/push-token。"
+      ],
+      "blockingReason": "Push Token 删除的账号、设备、应用归属与幂等语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入账号状态、设备或审计的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/me/signup-bonus-repair",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node 路由：backend/src/modules/auth/auth.routes.signup-bonus-repair.js。"
+      ],
+      "blockingReason": "注册奖励修复涉及账号、设备、应用 scope、奖励与审计写入；在唯一写入方和幂等/回滚语义核实前，Go 不得分流身份路由，也不得引入账号、奖励或审计的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/email/send-magic-link",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node 路由：backend/src/modules/auth/auth.routes.js 的 POST /email/send-magic-link。"
+      ],
+      "blockingReason": "Magic link 的邮件投递、限流、一次性令牌、审计和错误语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/email/verify",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node 路由：backend/src/modules/auth/auth.routes.js 的 GET /email/verify。"
+      ],
+      "blockingReason": "现有验证流程的 302、认证结果传递、过期与重复使用语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/google",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 Google 跳转入口。"
+      ],
+      "blockingReason": "OAuth provider 配置、回调域名、state、账号绑定与未配置错误尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/apple",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 Apple 跳转入口。"
+      ],
+      "blockingReason": "OAuth provider 配置、回调域名、state、账号绑定与未配置错误尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/apple/callback",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 Apple callback。"
+      ],
+      "blockingReason": "Apple callback 的签名、账号绑定、重定向、会话和失败语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/facebook",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 Facebook 跳转入口。"
+      ],
+      "blockingReason": "OAuth provider 配置、回调域名、state、账号绑定与未配置错误尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/facebook/upgrade",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 Facebook upgrade。"
+      ],
+      "blockingReason": "OAuth 账号升级、provider 配置、会话和错误语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/facebook/callback",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 Facebook callback。"
+      ],
+      "blockingReason": "Facebook callback 的 state、账号绑定、重定向、会话和失败语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/twitter",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 Twitter 跳转入口。"
+      ],
+      "blockingReason": "OAuth provider 配置、回调域名、state、账号绑定与未配置错误尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/twitter/callback",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 Twitter callback。"
+      ],
+      "blockingReason": "Twitter callback 的 state、账号绑定、重定向、会话和失败语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/google/upgrade",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 Google upgrade。"
+      ],
+      "blockingReason": "OAuth 账号升级、provider 配置、会话和错误语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/google/callback",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 Google callback。"
+      ],
+      "blockingReason": "Google callback 的 state、账号绑定、重定向、会话和失败语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/native/apple",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 native Apple 登录入口。"
+      ],
+      "blockingReason": "原生加密请求、Apple token、账号绑定、设备与会话语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/native/google",
+      "classification": "待核实",
+      "evidence": [
+        "Identity 静态合同：docs/audit/identity-static-contract.json。",
+        "Node OAuth 路由：backend/src/modules/auth/auth.routes.oauth.js 的 native Google 登录入口。"
+      ],
+      "blockingReason": "原生加密请求、Google token、账号绑定、设备与会话语义尚无受控运行基线；在真实兼容性核实前，Go 不得分流身份路由，也不得引入会话、账号或审计的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/balance",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/wallet/wallet.routes.js 的 GET /balance。",
+        "余额读取涉及钱包单一事实来源与退款边界。"
+      ],
+      "blockingReason": "余额、账本、退款与 PayCores/支付边界尚无生产基线；在单一事实来源和结算合同核实前，Go 不得分流钱包路由，也不得引入余额、账本或支付的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/ledger",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/wallet/wallet.routes.js 的 GET /ledger。",
+        "账本读取涉及钱包单一事实来源与退款边界。"
+      ],
+      "blockingReason": "余额、账本、退款与 PayCores/支付边界尚无生产基线；在单一事实来源和结算合同核实前，Go 不得分流钱包路由，也不得引入余额、账本或支付的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/verify-purchase",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/wallet/wallet.routes.js 的 POST /verify-purchase。",
+        "原生购买验证涉及钱包单一事实写入、退款与 PayCores/支付边界。"
+      ],
+      "blockingReason": "余额、账本、原生购买验证、退款与 PayCores/支付边界尚无生产基线；在单一事实来源和结算合同核实前，Go 不得分流钱包路由，也不得引入余额、账本或支付的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/external-payment-methods",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/wallet/wallet.external.routes.js 的 GET /external-payment-methods。",
+        "主站以 HMAC 查询 PayCores，并按用户、国家、产品、设备与来源处理缓存和渠道过滤。"
+      ],
+      "blockingReason": "该接口不是无状态公开读取：需冻结用户归属、渠道过滤、缓存与上游失败语义；在 PayCores 边界和错误合同核实前，Go 不得分流钱包路由，也不得引入支付或订单的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/create-external-checkout",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/wallet/wallet.external.routes.js 的 POST /create-external-checkout。",
+        "主站负责鉴权、产品、渠道与支付上下文校验；PayCores 创建订单并持有支付渠道边界。"
+      ],
+      "blockingReason": "订单创建、客户端幂等、渠道保护、HMAC 与失败恢复尚无受控运行基线；在 PayCores 订单权威、回滚和对账合同核实前，Go 不得分流钱包路由，也不得引入支付或订单的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/external-checkout-billing-prefill",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/wallet/wallet.external.routes.js 的 POST /external-checkout-billing-prefill。",
+        "该路径依赖已认证用户与 PayCores 外部结账上下文。"
+      ],
+      "blockingReason": "账单预填字段、用户归属、上游错误与隐私边界尚未冻结；在受控请求/响应和回退语义核实前，Go 不得分流钱包路由，也不得引入支付或订单的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/crypto/create-payment",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/wallet/wallet.routes.js 的 POST /crypto/create-payment。",
+        "Node 服务：backend/src/modules/wallet/wallet.crypto.service.js 先让 PayCores 创建订单，再创建链上支付信息。"
+      ],
+      "blockingReason": "链上支付、订单幂等、用户归属、渠道折扣、状态缓存与失败映射尚无受控运行基线；在 PayCores 订单权威和结算合同核实前，Go 不得分流钱包路由，也不得引入支付或订单的新增写入方。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/crypto/refresh-payment",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/wallet/wallet.routes.js 的 POST /crypto/refresh-payment。",
+        "该路径经 HMAC 调用 PayCores，更新或复用现有支付信息。"
+      ],
+      "blockingReason": "订单归属、支付复用、状态缓存与上游失败恢复尚无受控运行基线；在 PayCores 订单权威和幂等合同核实前，Go 不得分流钱包路由，也不得引入支付或订单的新增写入方。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/crypto/status/:orderId",
+      "classification": "待核实",
+      "evidence": [
+        "Node 路由：backend/src/modules/wallet/wallet.routes.js 的 GET /crypto/status/:orderId。",
+        "主站经 HMAC 从 PayCores 查询订单，并按当前用户校验订单归属。"
+      ],
+      "blockingReason": "订单归属、状态序列、paid 与 backendReady 收敛、缓存和上游错误语义尚无受控运行基线；在 PayCores 对账合同核实前，Go 不得分流钱包路由，也不得引入支付或订单的新增写入方。"
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+syntax = "proto3";
+package kratos.api;
+
+option go_package = "ai-business-service/internal/conf;conf";
+
+import "google/protobuf/duration.proto";
+
+message Bootstrap {
+  Server server = 1;
+  Data data = 2;
+  Security security = 3;
+  Integrations integrations = 4;
+  Worker worker = 5;
+}
+
+message Server {
+  message HTTP {
+    string network = 1;
+    string addr = 2;
+    google.protobuf.Duration timeout = 3;
+  }
+  message GRPC {
+    string network = 1;
+    string addr = 2;
+    google.protobuf.Duration timeout = 3;
+  }
+  HTTP http = 1;
+  GRPC grpc = 2;
+}
+
+message Data {
+  message Mongo {
+    // MongoDB 连接串仅指向 Go 主站独立实例，不能复用 Node 的连接串。
+    string uri = 1;
+    // 数据库名固定为 cling_main，以隔离 Node 的业务集合。
+    string database = 2;
+    // 本地事务依赖单节点副本集 rs0。
+    string replica_set = 3;
+    // 账本与预扣需要多文档事务，禁止关闭该开关。
+    bool transactions_required = 4;
+    // 仅 Docker Compose 本地运行时允许使用 mongo 服务名；默认拒绝。
+    bool docker_local_profile = 5;
+  }
+  Mongo mongo = 1;
+}
+
+message Security {
+  // 会话签名密钥；配置文件只能保存本地占位值，生产密钥只通过受控环境注入。
+  string session_signing_key = 1;
+  // 主站请求生成中台时使用的 HMAC 密钥。
+  string generation_request_hmac_key = 2;
+  // 生成中台回调主站时使用的 HMAC 密钥。
+  string generation_callback_hmac_key = 3;
+  // PayCores 回调主站时使用的独立 HMAC 密钥，禁止复用生成回调密钥。
+  string paycores_callback_hmac_key = 9;
+  // 主站请求 PayCores 创建订单时使用的独立 HMAC 密钥，禁止复用回调密钥。
+  string paycores_request_hmac_key = 10;
+  // Argon2id 内存成本，单位 KiB；低于安全下限时服务拒绝启动。
+  uint32 password_memory_kib = 4;
+  // Argon2id 时间成本；低于安全下限时服务拒绝启动。
+  uint32 password_time_cost = 5;
+  // Argon2id 并行度；运行时转换前会验证可安全表示为 uint8。
+  uint32 password_parallelism = 6;
+  // 每条密码凭据随机盐的字节数。
+  uint32 password_salt_bytes = 7;
+  // Argon2id 派生密钥的字节数。
+  uint32 password_key_bytes = 8;
+}
+
+message Integrations {
+  message Generation {
+    string base_url = 1;
+    // 主站自己的回调基地址，禁止依赖生成中台默认回调。
+    string callback_base_url = 2;
+    // 中台租户准入密钥；与请求 HMAC、回调 HMAC 分离，不能写入执行载荷。
+    string api_key = 3;
+  }
+  message Paycores {
+    string base_url = 1;
+    // 浏览器支付完成或取消后的本地跳转页，不是支付确认回调地址。
+    string return_url = 2;
+    string cancel_url = 3;
+  }
+  message AppStore {
+    string base_url = 1;
+  }
+
+  // 审核服务只处理受限用户的提示词，不能接触登录态、余额或生成回调信息。
+  message ContentReview {
+    string base_url = 1;
+    string api_key = 2;
+    string model = 3;
+    google.protobuf.Duration timeout = 4;
+  }
+
+  Generation generation = 1;
+  Paycores paycores = 2;
+  AppStore app_store = 3;
+  // 配置缺失时允许普通用户服务启动；受限用户提交将在审核阶段安全失败并冲正。
+  ContentReview content_review = 4;
+}
+
+message Worker {
+  google.protobuf.Duration poll_interval = 1;
+  int32 batch_size = 2;
+}

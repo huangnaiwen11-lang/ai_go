@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "classification": "待核实",
+  "migrationPermission": "未授予",
+  "sourceScope": "仅静态源码审计",
+  "identity": {
+    "routes": [
+      {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "aliases": [
+          "/api/v1/auth/register"
+        ],
+        "staticEvidence": [
+          "backend/src/modules/auth/auth.routes.js",
+          "frontend/src/api/auth.ts"
+        ],
+        "knownControls": [
+          "Cloudflare guard",
+          "限流与锁定",
+          "请求元数据与审计"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "aliases": [
+          "/api/v1/auth/login"
+        ],
+        "knownProviders": [
+          "apple",
+          "google",
+          "facebook",
+          "twitter"
+        ],
+        "staticEvidence": [
+          "backend/src/modules/auth/auth.routes.js",
+          "frontend/src/api/auth.ts"
+        ],
+        "compatibilityNotes": [
+          "前端保存认证结果后以 Bearer 头访问受保护接口",
+          "Swagger 的 provider 列表不能替代实际 Zod 支持面"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/me",
+        "aliases": [
+          "/api/v1/auth/me"
+        ],
+        "staticEvidence": [
+          "backend/src/modules/auth/auth.routes.js",
+          "backend/src/middleware/auth.js",
+          "frontend/src/api/auth.ts"
+        ],
+        "knownControls": [
+          "JWT",
+          "账号活跃状态",
+          "App scope"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/guest",
+        "aliases": [
+          "/api/v1/auth/guest"
+        ],
+        "staticEvidence": [
+          "backend/src/modules/auth/auth.routes.js",
+          "frontend/src/api/auth.ts"
+        ],
+        "compatibilityNotes": [
+          "移动端限制的注释与实际路由/schema 行为仍需受控运行 capture 验证"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/email/send-magic-link",
+        "aliases": [
+          "/api/v1/auth/email/send-magic-link"
+        ],
+        "staticEvidence": [
+          "backend/src/modules/auth/auth.routes.js",
+          "backend/src/modules/auth/auth.service.js"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/email/verify",
+        "aliases": [
+          "/api/v1/auth/email/verify"
+        ],
+        "staticEvidence": [
+          "backend/src/modules/auth/auth.routes.js",
+          "backend/src/modules/auth/auth.magic-link.service.js"
+        ],
+        "compatibilityNotes": [
+          "现有实现将认证结果写入 302 URL query；迁移前不得悄然改变"
+        ]
+      }
+    ],
+    "sessionBaseline": {
+      "currentLogoutBehavior": "前端仅清理本地 token，不向服务端发送 /logout 请求",
+      "staticEvidence": [
+        "frontend/src/api/auth.ts"
+      ]
+    }
+  },
+  "wallet": {
+    "routes": [
+      {
+        "method": "GET",
+        "path": "/api/wallet/balance",
+        "aliases": [
+          "/api/v1/wallet/balance"
+        ],
+        "readSideEffect": "可能创建 Wallet",
+        "cacheContract": "private, no-store；Vary: Authorization；可能带 X-Data-Stale",
+        "staticEvidence": [
+          "backend/src/modules/wallet/wallet.routes.js",
+          "backend/src/modules/wallet/wallet.ledger.service.js",
+          "frontend/src/api/wallet/account.ts"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/wallet/ledger",
+        "aliases": [
+          "/api/v1/wallet/ledger"
+        ],
+        "staticEvidence": [
+          "backend/src/modules/wallet/wallet.routes.js",
+          "backend/src/modules/wallet/wallet.ledger.service.js"
+        ],
+        "knownControls": [
+          "认证",
+          "按用户和 cursor 读取",
+          "limit 与 skip 边界"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/wallet/verify-purchase",
+        "aliases": [
+          "/api/v1/wallet/verify-purchase"
+        ],
+        "staticEvidence": [
+          "backend/src/modules/wallet/wallet.routes.js",
+          "payment-service/src/providers/"
+        ],
+        "compatibilityNotes": [
+          "支付渠道、PSP Webhook 和订单权威边界继续由 PayCores 持有"
+        ]
+      }
+    ],
+    "ledgerMutation": {
+      "singleEntryPoint": "applyMutation",
+      "staticEvidence": [
+        "backend/src/modules/wallet/wallet.ledger.service.js"
+      ],
+      "knownControls": [
+        "生产模式 Mongo transaction",
+        "条件更新防止负余额",
+        "幂等重放与冲突处理",
+        "提交后才发布事件"
+      ]
+    },
+    "paymentBoundary": {
+      "owner": "PayCores",
+      "staticEvidence": [
+        "payment-service",
+        "backend/src/modules/payments/payment-confirmed.service.js"
+      ],
+      "knownControls": [
+        "主站通过 HMAC 调 PayCores",
+        "payment-confirmed 回调校验 V2 HMAC 与 nonce",
+        "paid 且 backendReady 为 false 时前端继续等待权益收敛"
+      ]
+    }
+  },
+  "note": "本清单不含真实运行 capture、Authorization、Cookie、token、支付回执、签名、用户标识或完整 Webhook 载荷。它只能辅助选择受控验证项目，不能作为 Go 路由、写入方、Gateway 分流或支付切换的许可。"
+}

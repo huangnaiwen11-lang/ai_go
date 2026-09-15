@@ -1,0 +1,48 @@
+# 本文件仅供 docker compose 内的 app 服务使用，不含真实密钥或生产地址。
+server:
+  http:
+    addr: 0.0.0.0:18000
+  grpc:
+    addr: 0.0.0.0:19000
+data:
+  mongo:
+    uri: mongodb://mongo:27017/?replicaSet=rs0
+    database: cling_main
+    replica_set: rs0
+    transactions_required: true
+    docker_local_profile: true
+security:
+  session_signing_key: local-development-session-key-not-for-production
+  generation_request_hmac_key: local-development-generation-request-key-not-for-production
+  generation_callback_hmac_key: local-development-generation-callback-key-not-for-production
+  paycores_callback_hmac_key: local-development-paycores-callback-key-not-for-production
+  # 仅限本地 mock 建单签名，必须与回调密钥独立，禁止填写真实 PayCores 凭据。
+  paycores_request_hmac_key: local-development-paycores-request-key-not-for-production
+  # Docker 本地账号入口与宿主机保持相同的 Argon2id 安全下限，禁止为启动便利降级。
+  password_memory_kib: 19456
+  password_time_cost: 2
+  password_parallelism: 1
+  password_salt_bytes: 16
+  password_key_bytes: 32
+integrations:
+  generation:
+    base_url: http://host.docker.internal:19081
+    callback_base_url: http://127.0.0.1:18000
+    # 仅限本地占位；真实生成中台 API Key 不能写入镜像或仓库。
+    api_key: local-development-generation-api-key-not-for-production
+  paycores:
+    base_url: http://host.docker.internal:19082
+    # 浏览器回跳地址由宿主机处理，不能误写成 Docker 内部服务名。
+    return_url: http://127.0.0.1:5173/payment/success
+    cancel_url: http://127.0.0.1:5173/payment/cancel
+  app_store:
+    base_url: http://host.docker.internal:19083
+  # Docker 本地占位，不能填写 Node 或生产审核密钥。
+  content_review:
+    base_url: http://host.docker.internal:19084/v1
+    api_key: local-development-content-review-key-not-for-production
+    model: local-content-review-placeholder
+    timeout: 3s
+worker:
+  poll_interval: 1s
+  batch_size: 20

@@ -1,0 +1,18 @@
+{
+  "request": {
+    "kind": "video",
+    "contentType": "video/mp4",
+    "fileSizeBytes": 1024
+  },
+  "ticket": {
+    "uploadURL": "https://upload.example.test/ugc/example/videos/clip.mp4?X-Amz-Signature=example-placeholder",
+    "publicURL": "",
+    "key": "ugc/example/videos/clip.mp4",
+    "filename": "ugc/example/videos/clip.mp4",
+    "contentType": "video/mp4",
+    "maxBytes": 52428800,
+    "headers": {
+      "Content-Type": ["video/mp4"]
+    }
+  }
+}

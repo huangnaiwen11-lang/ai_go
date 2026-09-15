@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "artifactStatus": "已废弃",
+  "supersededBy": [
+    "api-migration-matrix.json",
+    "api-inventory.generated.json"
+  ],
+  "reason": "历史宽泛路径和分类不能证明精确接口已迁移；此遗留产物不承载接口迁移决策，迁移决策只能读取精确 method/path 的权威矩阵。"
+}

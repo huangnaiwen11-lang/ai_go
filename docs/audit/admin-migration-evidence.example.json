@@ -1,0 +1,29 @@
+{
+  "stage": "admin",
+  "evidence": [
+    {
+      "kind": "admin_route_permission",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "admin_scope_compatibility",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "admin_api_authentication",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "admin_mutation_audit",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "admin_page_access",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "admin_rollback_readiness",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  ]
+}

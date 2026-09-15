@@ -1,0 +1,197 @@
+openapi: 3.0.3
+info:
+  title: Cling AI Go 用户端 API
+  version: 0.1.0-local
+  description: 本文档只描述本地 Go 用户端合同；管理后台、Animate、真实支付供应商和生产地址不在范围内。
+servers:
+  - url: http://127.0.0.1:18000
+    description: 本地 Gateway
+security:
+  - bearerAuth: []
+paths:
+  /api/auth/register:
+    post:
+      summary: 注册并创建 Go 会话
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/LoginResponse' }
+  /api/auth/login:
+    post:
+      summary: 密码登录
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/LoginResponse' }
+  /api/auth/guest:
+    post:
+      summary: 创建游客会话
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/LoginResponse' }
+  /api/auth/me:
+    get:
+      summary: 读取当前 Go 用户
+      responses:
+        '200': { $ref: '#/components/responses/UserResponse' }
+  /api/auth/bind:
+    post:
+      summary: 游客升级为已绑定用户
+      description: 服务端验证外部凭据并升级同一个用户，不创建第二个账号。
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object, required: [provider, credential], properties: { provider: { type: string }, credential: { type: string, writeOnly: true } } } }
+      responses:
+        '200': { $ref: '#/components/responses/UserResponse' }
+  /api/auth/me/profile:
+    patch:
+      summary: 修改昵称
+      responses:
+        '200': { $ref: '#/components/responses/UserResponse' }
+  /api/auth/me/password:
+    post:
+      summary: 修改密码并撤销旧会话
+      responses:
+        '200': { $ref: '#/components/responses/CreationResponse' }
+  /api/auth/me/sessions:
+    delete:
+      summary: 退出所有设备
+      responses:
+        '200': { $ref: '#/components/responses/CreationResponse' }
+  /api/chat/image/async:
+    post:
+      summary: 创建 T2I 或模板 I2I 任务
+      description: 门禁、预扣、审核和幂等由 Go 服务端处理，不接受余额、VIP 或钻石字段。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImageCreationRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CreationResponse' }
+        '402': { $ref: '#/components/responses/ErrorResponse' }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
+  /api/chat/video:
+    post:
+      summary: 创建模板视频任务
+      description: 文生视频由 Go 编排为首帧和图生视频两个步骤；Animate 不属于此接口。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VideoCreationRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/CreationResponse' }
+  /api/users/me/generations/stream:
+    get:
+      summary: 读取当前用户生成状态 SSE
+      responses:
+        '200':
+          description: SSE 流
+          content:
+            text/event-stream: { schema: { type: string } }
+  /api/notifications:
+    get:
+      summary: 查询通知
+      responses:
+        '200': { $ref: '#/components/responses/NotificationResponse' }
+  /api/media/images:
+    post:
+      summary: 上传用户图片素材
+      requestBody:
+        required: true
+        content:
+          multipart/form-data: { schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } } }
+      responses:
+        '201': { $ref: '#/components/responses/CreationResponse' }
+  /api/media/images/{id}:
+    get:
+      summary: 读取本人图片素材
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: 图片二进制, content: { image/*: { schema: { type: string, format: binary } } } }
+  /api/works:
+    get:
+      summary: 查询本人作品列表
+      responses:
+        '200': { $ref: '#/components/responses/CreationResponse' }
+  /api/works/{id}:
+    get:
+      summary: 查询本人作品详情
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { $ref: '#/components/responses/CreationResponse' }
+  /api/wallet/create-external-checkout:
+    post:
+      summary: 创建本地支付订单
+      description: 本地模式只创建 Go 自有 pending 订单，不表示真实支付成功。
+      responses:
+        '200': { $ref: '#/components/responses/CheckoutResponse' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, timezone]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, writeOnly: true }
+        timezone: { type: string }
+        displayName: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, writeOnly: true }
+    ImageCreationRequest:
+      type: object
+      required: [prompt]
+      properties:
+        prompt: { type: string }
+        templateId: { type: string }
+        assetIds: { type: array, items: { type: string } }
+        idempotencyKey: { type: string }
+    VideoCreationRequest:
+      type: object
+      required: [templateId, durationSeconds]
+      properties:
+        templateId: { type: string }
+        prompt: { type: string }
+        imageUrl: { type: string, format: uri }
+        durationSeconds: { type: integer, enum: [5, 10, 15] }
+        idempotencyKey: { type: string }
+    User:
+      type: object
+      required: [id, bindingState, accountStatus, contentAccess, timezone, isGuest]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        bindingState: { type: string, enum: [guest, bound] }
+        accountStatus: { type: string, enum: [normal, banned, deleted] }
+        contentAccess: { type: string, enum: [standard, review_restricted] }
+        timezone: { type: string }
+        isGuest: { type: boolean }
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, enum: [false] }
+        code: { type: string }
+        message: { type: string }
+  responses:
+    LoginResponse: { description: 会话结果, content: { application/json: { schema: { type: object } } } }
+    UserResponse: { description: 用户结果, content: { application/json: { schema: { type: object } } } }
+    CreationResponse: { description: 创建结果, content: { application/json: { schema: { type: object } } } }
+    NotificationResponse: { description: 通知列表, content: { application/json: { schema: { type: object } } } }
+    CheckoutResponse: { description: 本地订单结果, content: { application/json: { schema: { type: object } } } }
+    ErrorResponse: { description: 业务错误, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }

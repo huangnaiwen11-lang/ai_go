@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package cling.main.v1;
+
+option go_package = "ai-business-service/api/cling/v1;v1";
+
+// GenerationErrorCode 固定三种不可合并的生成门禁结果。
+// 它们虽然部分共享 HTTP 状态，但客户端需要据此展示不同的引导动作。
+enum GenerationErrorCode {
+  GENERATION_ERROR_CODE_UNSPECIFIED = 0;
+  ACCOUNT_BINDING_REQUIRED = 1;
+  VIP_REQUIRED = 2;
+  INSUFFICIENT_FUNDS = 3;
+}

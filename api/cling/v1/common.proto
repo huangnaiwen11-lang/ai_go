@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package cling.main.v1;
+
+option go_package = "ai-business-service/api/cling/v1;v1";
+
+// ErrorBody 是主站稳定错误响应的公共载体。
+// 业务错误码由主站定义，不能依赖底层框架或中台的错误文本。
+message ErrorBody {
+  string code = 1;
+  string message = 2;
+  string request_id = 3;
+}

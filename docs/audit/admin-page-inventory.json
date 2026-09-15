@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "entryPath": "/admin/",
+  "sourceOfTruth": "../ai-host-v2-platform-main/admin",
+  "classificationValues": ["确认迁移", "待核实", "候选淘汰", "已确认废弃"],
+  "pages": [
+    {"path": "/", "component": "admin/src/pages/DashboardPage.tsx", "apiModules": ["admin/src/api/analytics.ts"], "roles": ["admin", "super_admin", "partner_operator"], "tests": ["e2e/tests/admin-analytics.spec.ts"], "classification": "确认迁移"},
+    {"path": "/users", "component": "admin/src/pages/users/UsersPage.tsx", "apiModules": ["admin/src/api/users.ts"], "roles": ["admin", "super_admin", "partner_operator"], "tests": ["e2e/tests/admin-users.spec.ts"], "classification": "确认迁移"},
+    {"path": "/analytics", "component": "admin/src/pages/analytics/AnalyticsPage.tsx", "apiModules": ["admin/src/api/analytics.ts"], "roles": ["admin", "super_admin", "partner_operator"], "tests": ["e2e/tests/admin-analytics.spec.ts"], "classification": "确认迁移"},
+    {"path": "/images", "component": "admin/src/pages/images/ImagesPage.tsx", "apiModules": ["admin/src/api/images.ts"], "roles": ["admin", "super_admin"], "tests": ["e2e/tests/admin-review.spec.ts"], "classification": "确认迁移"},
+    {"path": "/videos", "component": "admin/src/pages/video-review/VideoReviewPage.tsx", "apiModules": ["admin/src/api/videoReview.ts"], "roles": ["admin", "super_admin"], "tests": ["e2e/tests/admin-review.spec.ts"], "classification": "确认迁移"},
+    {"path": "/reports", "component": "admin/src/pages/reports/ReportsPage.tsx", "apiModules": ["admin/src/api/reports.ts"], "roles": ["admin", "super_admin"], "tests": ["e2e/tests/admin-review.spec.ts"], "classification": "待核实"},
+    {"path": "/wallet", "component": "admin/src/pages/wallet/WalletPage.tsx", "apiModules": ["admin/src/api/wallet.ts"], "roles": ["admin", "super_admin"], "tests": [], "classification": "待核实"},
+    {"path": "/generation/jobs", "component": "admin/src/pages/generation/GenerationJobsPage.tsx", "apiModules": ["admin/src/api/generation.ts"], "roles": ["admin", "super_admin"], "tests": [], "classification": "待核实"},
+    {"path": "/loras", "component": "admin/src/pages/loras/LoraManagementPage.tsx", "apiModules": ["admin/src/api/loras.ts"], "roles": ["admin", "super_admin"], "tests": [], "classification": "待核实"},
+    {"path": "/login", "component": "admin/src/pages/LoginPage.tsx", "apiModules": ["admin/src/api/auth.ts"], "roles": ["public"], "tests": ["e2e/tests/admin-auth.spec.ts"], "classification": "确认迁移"}
+  ],
+  "rule": "菜单存在不能证明页面仍在使用；必须同时具备路由、组件/API 引用、测试或访问证据。"
+}

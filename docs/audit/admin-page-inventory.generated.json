@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-03T07:18:08.071Z",
+  "entryPath": "/admin/",
+  "sourceOfTruth": "/Users/huangnaiwen/project/ai-host-v2-platform-main/admin",
+  "pages": [
+    {
+      "path": "/analytics",
+      "component": "AnalyticsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/analytics/cohort",
+      "component": "CohortAnalysisPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/analytics/funnel-health",
+      "component": "FunnelHealthPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/analytics/ga4",
+      "component": "GA4DashboardPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/analytics/investment",
+      "component": "InvestmentAnalysisPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/analytics/pwa",
+      "component": "PwaDashboardPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/analytics/subscription",
+      "component": "SubscriptionAnalyticsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/analytics/utm-funnel",
+      "component": "UtmFunnelPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/apps",
+      "component": "AppsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/blog/edit/:id",
+      "component": "BlogEditorPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/content-safety",
+      "component": "ContentSafetyPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/content/blog",
+      "component": "BlogPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/content/blog/create",
+      "component": "BlogEditorPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/content/blog/edit/:id",
+      "component": "BlogEditorPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/content/discover",
+      "component": "DiscoverContentPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/content/materials",
+      "component": "BotGenerationPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/feedback",
+      "component": "FeedbackPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/generation-feedback",
+      "component": "GenerationFeedbackPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/generation/audit",
+      "component": "ConfigAuditPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/generation/director",
+      "component": "DirectorControlPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/generation/jobs",
+      "component": "GenerationJobsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/generation/model-debug",
+      "component": "ModelDebugPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/generation/pools",
+      "component": "NodePoolsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/images",
+      "component": "ImagesPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/login",
+      "component": "LoginPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/loras",
+      "component": "LoraManagementPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/partners",
+      "component": "PartnerOpsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/payment/crypto-dashboard",
+      "component": "CryptoDashboardPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/payment/financial-report",
+      "component": "FinancialReportPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/payment/orders",
+      "component": "PaycoresOrdersPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/reports",
+      "component": "ReportsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/seo-workflow/blog/edit/:id",
+      "component": "BlogEditorPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/ad-preview-configs",
+      "component": "AdPreviewConfigsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/animate-templates",
+      "component": "AnimateTemplatesPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/growth",
+      "component": "GrowthPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/image-config",
+      "component": "QwenEditConfigPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/image-presets",
+      "component": "ImagePresetsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/ltx-video-config",
+      "component": "LtxVideoConfigPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/marketing-pixels",
+      "component": "MarketingPixelsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/minimax-video-config",
+      "component": "MiniMaxVideoConfigPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/recharge-packages",
+      "component": "RechargePackagesPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/rewards",
+      "component": "RewardsConfigPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/story-templates",
+      "component": "StoryTemplatesPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/stripe-channels",
+      "component": "StripeChannelsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/swap-templates",
+      "component": "FaceSwapTemplatesPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/utm-links",
+      "component": "UtmLinksPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/video-config",
+      "component": "VideoConfigPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/video-templates",
+      "component": "VideoTemplatesPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/settings/vip-config",
+      "component": "VipConfigPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/system/api-overview",
+      "component": "ApiOverviewPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/test-accounts",
+      "component": "TestAccountsPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/users",
+      "component": "UsersPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/videos",
+      "component": "VideoReviewPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    },
+    {
+      "path": "/wallet",
+      "component": "WalletPage.tsx",
+      "source": "admin/src/App.tsx",
+      "classification": "待核实"
+    }
+  ],
+  "note": "静态文本候选均为待人工核验；缺少访问、权限和接口契约证据，不能作为 Go 分流依据。"
+}

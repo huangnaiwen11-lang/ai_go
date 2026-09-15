@@ -1,0 +1,47 @@
+# 本文件仅说明本地配置形状，不含真实密钥、生产地址或 Node 的 MongoDB 连接串。
+server:
+  http:
+    addr: 127.0.0.1:18000
+  grpc:
+    addr: 127.0.0.1:19000
+data:
+  mongo:
+    uri: mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true
+    database: cling_main
+    replica_set: rs0
+    transactions_required: true
+security:
+  session_signing_key: replace-with-local-development-value
+  generation_request_hmac_key: replace-with-local-development-request-key
+  generation_callback_hmac_key: replace-with-local-development-callback-key
+  paycores_callback_hmac_key: replace-with-local-development-paycores-callback-key
+  # PayCores 建单与回调使用独立密钥，禁止填写真实生产凭据。
+  paycores_request_hmac_key: replace-with-local-development-paycores-request-key
+  # 本地账号入口使用的 Argon2id 安全基线；禁止为缩短测试时间而调低。
+  password_memory_kib: 19456
+  password_time_cost: 2
+  password_parallelism: 1
+  password_salt_bytes: 16
+  password_key_bytes: 32
+# 游客绑定本地联调通过环境变量开启：GO_LOCAL_BINDING_VERIFIER_ENABLED=1，
+# GO_LOCAL_BINDING_SECRET 必须使用 local- 前缀；未设置时绑定接口保持拒绝。
+integrations:
+  generation:
+    base_url: http://127.0.0.1:19081
+    callback_base_url: http://127.0.0.1:18000
+    api_key: replace-with-local-development-generation-api-key
+  paycores:
+    base_url: http://127.0.0.1:19082
+    return_url: http://127.0.0.1:5173/payment/success
+    cancel_url: http://127.0.0.1:5173/payment/cancel
+  app_store:
+    base_url: http://127.0.0.1:19083
+  # 审核服务仅供受限用户提交阶段使用；此处只能填本地占位，禁止复用 Node 密钥。
+  content_review:
+    base_url: http://127.0.0.1:19084/v1
+    api_key: replace-with-local-development-content-review-key
+    model: local-content-review-placeholder
+    timeout: 3s
+worker:
+  poll_interval: 1s
+  batch_size: 20

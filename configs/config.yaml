@@ -1,0 +1,51 @@
+server:
+  http:
+    addr: 127.0.0.1:18000
+    timeout: 1s
+  grpc:
+    addr: 127.0.0.1:19000
+    timeout: 1s
+data:
+  mongo:
+    # 宿主机通过直连访问单节点副本集，避免解析 Docker 内部服务名。
+    uri: mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true
+    database: cling_main
+    replica_set: rs0
+    transactions_required: true
+security:
+  # 仅限本地骨架运行的占位值。生产密钥不得写入仓库。
+  session_signing_key: local-development-session-key-not-for-production
+  generation_request_hmac_key: local-development-generation-request-key-not-for-production
+  generation_callback_hmac_key: local-development-generation-callback-key-not-for-production
+  # 仅限本地 PayCores 回调验签；默认 Gateway 开关关闭，禁止填写生产密钥。
+  paycores_callback_hmac_key: local-development-paycores-callback-key-not-for-production
+  # 仅限本地 mock 建单签名；必须与 PayCores 回调密钥分离。
+  paycores_request_hmac_key: local-development-paycores-request-key-not-for-production
+  # 本地账号入口的 Argon2id 安全基线；禁止因测试便利降级。
+  password_memory_kib: 19456
+  password_time_cost: 2
+  password_parallelism: 1
+  password_salt_bytes: 16
+  password_key_bytes: 32
+integrations:
+  # 所有默认地址均为本机占位地址，不能指向生产服务。
+  generation:
+    base_url: http://127.0.0.1:19081
+    callback_base_url: http://127.0.0.1:18000
+    # 仅限本地占位，必须与两方向 HMAC 分离；生产值只通过受控环境注入。
+    api_key: local-development-generation-api-key-not-for-production
+  paycores:
+    base_url: http://127.0.0.1:19082
+    return_url: http://127.0.0.1:5173/payment/success
+    cancel_url: http://127.0.0.1:5173/payment/cancel
+  app_store:
+    base_url: http://127.0.0.1:19083
+  # 审核服务配置仅为本地占位；不要填写 Node 密钥或生产密钥。
+  content_review:
+    base_url: http://127.0.0.1:19084/v1
+    api_key: local-development-content-review-key-not-for-production
+    model: local-content-review-placeholder
+    timeout: 3s
+worker:
+  poll_interval: 1s
+  batch_size: 20

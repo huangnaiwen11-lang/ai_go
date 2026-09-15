@@ -1,0 +1,11 @@
+.git
+.gitignore
+.DS_Store
+.idea
+.vscode
+.superpowers
+.worktrees
+bin
+coverage.out
+*.log
+

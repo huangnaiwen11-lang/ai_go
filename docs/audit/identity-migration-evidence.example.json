@@ -1,0 +1,29 @@
+{
+  "stage": "identity",
+  "evidence": [
+    {
+      "kind": "credential_compatibility",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "account_scope_rejection",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "oauth_and_magic_link",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "login_lock_and_audit",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "unauthorized_envelope",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "registration_idempotency",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  ]
+}

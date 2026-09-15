@@ -1,0 +1,117 @@
+{
+  "classification": "待核实",
+  "migrationPermission": "未授予",
+  "sourceScope": "仅静态源码审计",
+  "goRouteEnabled": false,
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "aliases": ["/api/v1/auth/register"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "aliases": ["/api/v1/auth/login"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "aliases": ["/api/v1/auth/me"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/guest",
+      "aliases": ["/api/v1/auth/guest"]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/auth/me/push-token",
+      "aliases": ["/api/v1/auth/me/push-token"]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/auth/me/push-token",
+      "aliases": ["/api/v1/auth/me/push-token"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/me/signup-bonus-repair",
+      "aliases": ["/api/v1/auth/me/signup-bonus-repair"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/email/send-magic-link",
+      "aliases": ["/api/v1/auth/email/send-magic-link"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/email/verify",
+      "aliases": ["/api/v1/auth/email/verify"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/google",
+      "aliases": ["/api/v1/auth/google"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/apple",
+      "aliases": ["/api/v1/auth/apple"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/apple/callback",
+      "aliases": ["/api/v1/auth/apple/callback"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/facebook",
+      "aliases": ["/api/v1/auth/facebook"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/facebook/upgrade",
+      "aliases": ["/api/v1/auth/facebook/upgrade"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/facebook/callback",
+      "aliases": ["/api/v1/auth/facebook/callback"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/twitter",
+      "aliases": ["/api/v1/auth/twitter"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/twitter/callback",
+      "aliases": ["/api/v1/auth/twitter/callback"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/google/upgrade",
+      "aliases": ["/api/v1/auth/google/upgrade"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/google/callback",
+      "aliases": ["/api/v1/auth/google/callback"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/native/apple",
+      "aliases": ["/api/v1/auth/native/apple"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/native/google",
+      "aliases": ["/api/v1/auth/native/google"]
+    }
+  ],
+  "logout": {
+    "clearsLocalToken": true,
+    "callsServer": false
+  }
+}

@@ -1,0 +1,6744 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-03T07:18:08.069Z",
+  "sourceOfTruth": "/Users/huangnaiwen/project/ai-host-v2-platform-main",
+  "routePrefixes": [
+    "/admin/agents",
+    "/admin/analytics",
+    "/admin/analytics/cohort",
+    "/admin/analytics/funnel-health",
+    "/admin/analytics/ga4",
+    "/admin/analytics/subscription",
+    "/admin/analytics/utm-funnel",
+    "/admin/apps",
+    "/admin/apps",
+    "/admin/blog",
+    "/admin/config",
+    "/admin/config/platforms",
+    "/admin/content-generation",
+    "/admin/director",
+    "/admin/discover",
+    "/admin/facebook",
+    "/admin/faceswap",
+    "/admin/generation",
+    "/admin/gpu-fleet",
+    "/admin/growth",
+    "/admin/homepage",
+    "/admin/image-review",
+    "/admin/images",
+    "/admin/landing-presets",
+    "/admin/loras",
+    "/admin/marketing/pixels",
+    "/admin/ops",
+    "/admin/partners",
+    "/admin/paycores",
+    "/admin/pwa",
+    "/admin/qwen-edit",
+    "/admin/reports",
+    "/admin/sex-pose",
+    "/admin/story-chain",
+    "/admin/test-accounts",
+    "/admin/users",
+    "/admin/utm-links",
+    "/admin/video",
+    "/admin/video-enhance",
+    "/admin/video-review",
+    "/admin/voices",
+    "/admin/wallet",
+    "/agents",
+    "/ai-body",
+    "/animate",
+    "/attribution",
+    "/auth",
+    "/b2b",
+    "/blog",
+    "/chat",
+    "/checkin",
+    "/config",
+    "/creations",
+    "/discover",
+    "/faceswap",
+    "/favorites",
+    "/gallery-set",
+    "/game",
+    "/growth",
+    "/homepage",
+    "/images",
+    "/internal",
+    "/internal",
+    "/internal/generation-callback",
+    "/internal/generation-progress",
+    "/jobs",
+    "/landing-presets",
+    "/legal-pages",
+    "/media",
+    "/native",
+    "/notifications",
+    "/partner",
+    "/payments",
+    "/prompts",
+    "/push",
+    "/pwa",
+    "/r",
+    "/reports",
+    "/search",
+    "/seo",
+    "/sex-pose",
+    "/story-chain",
+    "/telegram",
+    "/telemetry",
+    "/templates",
+    "/training-upload",
+    "/upload",
+    "/upscale",
+    "/users",
+    "/vendor-core",
+    "/view-shift",
+    "/voices",
+    "/wallet"
+  ],
+  "entries": [
+    {
+      "method": "GET",
+      "path": "/api/:param/audit",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/audit/recent",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/capabilities",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/capabilities/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/capabilities/:param/audit",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/capabilities/:param/rollback",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/capabilities/:param/versions",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/:param/capabilities/:param/versions/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/capabilities/:param/versions/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/:param/capabilities/:param/versions/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/capabilities/:param/versions/:param/activate",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/capabilities/:param/versions/:param/canary",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/capabilities/:param/versions/:param/dry-run",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/crypto-stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/estimate",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/finance/cashflow",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/finance/daily",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/finance/reserve-pool",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/fleet",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/generation-config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/botGeneration.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/:param/generation-config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/botGeneration.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/generation-scheduler/status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/botGeneration.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/generations",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/botGeneration.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/instances/:param/decommission",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/jobs",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/jobs/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/model-debug/catalog",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/model-debug/gpuhub/instances/:param/asset-status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/model-debug/gpuhub/instances/:param/destroy",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/model-debug/gpuhub/instances/:param/sync-assets",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/model-debug/gpuhub/jobs",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/model-debug/gpuhub/jobs/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/model-debug/gpuhub/jobs/:param/cancel",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/model-debug/gpuhub/quotes",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/model-debug/nodes/:param/lora-status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/model-debug/nodes/:param/sync-loras",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/nodes",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/nodes/:param/model-status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/nodes/:param/sync-models",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/onboarding",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/onboarding",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/onboarding/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/onboarding/:param/cancel",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/onboarding/:param/retry",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/onboarding/scripts",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/orders",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/orders/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/orders/:param/retry-notify",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/orders/filter-options",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/overview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/discover.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/pools",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/pools",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/:param/pools/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/pools/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/:param/pools/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/pools/seed-defaults",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/preview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/director.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/:param/providers/:param/:param/policy",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/:param/providers/:param/:param/source-routing",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/provision-jobs/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/provision-jobs/:param/cancel",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/telegram-stars-balance",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/paycores.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/tenants",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/tenants",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/:param/tenants/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/tenants/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/:param/tenants/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/tenants/:param/rotate-keys",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/workflows",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/workflows/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/workflows/:param/rollback",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/workflows/:param/versions",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/:param/workflows/:param/versions/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/:param/workflows/:param/versions/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/:param/workflows/:param/versions/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/workflows/:param/versions/:param/activate",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/workflows/:param/versions/:param/canary",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/:param/workflows/detect-placeholders",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/capabilities.ts"
+      ],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/agents",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/agents.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/agents",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/agents.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/agents/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/agents.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/agents/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/agents.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/agents/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/agents.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/agents/:param/approve",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/agents.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/agents/:param/reject",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/agents.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/agents/pending",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/agents.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/agents/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/agents.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/ad-spend",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/analytics/cohort/ad-spend",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/analytics/cohort/ad-spend/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/breakeven",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/investment",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/investment-by-country",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/lifecycle",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/retention",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/revenue",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/revenue-breakdowns",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/top-client-revenue",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/top-country-revenue",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/cohort/top-source-revenue",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/cohort.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/country-stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/daily-stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/funnel-health/all",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/funnelHealth.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/agents",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/demographics",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/devices",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/events",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/events/daily",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/funnel",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/insights",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/overview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/pages",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/pwa/active",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/pwa/installs",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/pwa/paywall-sources",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/pwa/platforms",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/pwa/summary",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/realtime",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/retention",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/search",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/summary",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/ga4/traffic",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/images",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/overview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/revenue",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/revenue-trends",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/styles",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/subscription/breakdown",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/subscription.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/subscription/overview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/subscription.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/subscription/subscribers",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/subscription.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/subscription/trends",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/subscription.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/templates",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/users",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/utm-funnel",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/utmFunnel.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/utm-funnel/trend",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/utmFunnel.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/videos",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/analytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/apps",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/apps",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/apps/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/apps/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/apps/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/apps/:param/api-domain/candidates",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/apps/:param/api-domain/register",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/apps/:param/build-request",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/apps/:param/integration-check",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/apps/:param/legal-pages",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/appLegalPages.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/apps/:param/legal-pages/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/appLegalPages.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/apps/:param/legal-pages/:param/rollback",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/appLegalPages.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/apps/:param/legal-pages/:param/verify",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/appLegalPages.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/apps/:param/legal-pages/publishing-binding",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/appLegalPages.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/apps/:param/legal-pages/publishing-binding/managed",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/appLegalPages.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/apps/:param/legal-pages/publishing-binding/verify",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/appLegalPages.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/apps/:param/package-config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/apps/:param/package-config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/apps/overview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/apps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/blog",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/blog.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/blog",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/blog.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/blog/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/blog.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/blog/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/blog.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/blog/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/blog.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/blog/:param/publish",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/blog.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/blog/:param/unpublish",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/blog.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/blog/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/blog.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/config/env",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/config/feature-paths",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/system/ApiOverviewPage.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/config/platforms",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/platforms.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/config/platforms/:param:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/platforms.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/config/platforms/:param:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/platforms.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/config/platforms/:param:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/platforms.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/config/platforms/:param/clone",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/platforms.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/config/platforms/:param/content-policy",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/platforms.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/config/platforms/:param/features",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/platforms.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/config/platforms/:param/preview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/platforms.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/config/platforms/:param/providers",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/platforms.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/config/pricing",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/pricing.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/config/pricing/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/pricing.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/config/system/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/csam.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/config/system/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts",
+        "admin/src/api/csam.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/faceswap/templates",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/faceswap/templates",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/audit",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/growth.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/growth.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/growth/config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/growth.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/details",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/growth.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/growth/invite-bonus/:param/approve",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/growth.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/growth/invite-bonus/:param/reject",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/growth.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/rewards",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/growth.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/homepage/content",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/homepage/content",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/homepage/content/video-templates/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/homepage/image-model-profiles",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelOrchestration.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/homepage/optimize-videos",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/homepage/optimize-videos/status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/homepage/review-template/:param/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/reviewTemplates.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/homepage/review-template/:param/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/reviewTemplates.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/homepage/template-ops/runs",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/templateOps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/homepage/template-ops/runs",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/templateOps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/homepage/template-ops/runs/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/templateOps.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/homepage/video-model-profiles",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/config.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/image-review",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/imageReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/image-review/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/imageReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/image-review/:param/log",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/imageReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/image-review/:param/prompt",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/imageReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/image-review/:param/review",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/imageReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/image-review/batch-review",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/imageReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/image-review/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/imageReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/images",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/images.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/images/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/images.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/images/:param/hide",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/images.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/images/:param/restore",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/images.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/images/batch-hide",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/images.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/images/provider-status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/images.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/images/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/images.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/images/template-options",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/images.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/images/today-by-gpu",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/images.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/landing-presets/configs",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/landingPresets.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/landing-presets/configs",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/landingPresets.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/landing-presets/configs/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/landingPresets.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/landing-presets/configs/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/landingPresets.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/landing-presets/configs/:param/status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/landingPresets.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/landing-presets/configs/generate-single",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/landingPresets.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/landing-presets/features",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/landingPresets.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/landing-presets/features/:param/templates",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/landingPresets.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/landing-presets/usage",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/landingPresets.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/loras",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/loras",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/loras/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/loras/:param/mark-installed",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/loras/:param/toggle",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/loras/assets",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/loras/check-installed",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/loras/reconcile",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/modelDebug.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/loras/runtime-assets",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/loras/runtime-assets/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/loras/seed",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/loras/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/loras/wan-node-inventory",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/loras.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/marketing/pixels/meta",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/marketingPixels.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/marketing/pixels/meta",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/marketingPixels.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/marketing/pixels/meta",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/marketingPixels.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/partners",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/partners",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/partners/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/partners/:param/operator-credentials/reset",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/partners/:param/users",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/partners/assets",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/partners/assets",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/partners/assets/:param/review",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/partners/dashboard",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/partners/links",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/partners/links",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/partners/operator-overview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/partners/settlements/:param/status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/partners/settlements/generate",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/partners/sites",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/partners/sites",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/partners/sites/:param/domains/:param/verify",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/partners/sites/:param/pixels",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/partners/sites/:param/runtime",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/partners.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/paycores/channels-overview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/components/stripe-channels/ChannelOrderTab.tsx",
+        "admin/src/pages/settings/components/stripe-channels/ChannelsTab.tsx",
+        "admin/src/pages/settings/RechargePackagesPage.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/paycores/products",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/components/stripe-channels/ChannelsTab.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/paycores/providers",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/components/stripe-channels/ProvidersTab.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/paycores/providers/:param/:param/protection",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/components/stripe-channels/ChannelsTab.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/paycores/providers/:param/toggle",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/components/stripe-channels/ChannelsTab.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/paycores/routing",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/components/stripe-channels/ChannelOrderTab.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/paycores/routing",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/components/stripe-channels/ChannelOrderTab.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/paycores/weights",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/components/stripe-channels/ChannelsTab.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/pwa/bonus",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/pwaAnalytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/pwa/funnel",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/pwaAnalytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/pwa/overview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/pwaAnalytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/pwa/timing",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/pwaAnalytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/pwa/value",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/pwaAnalytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/pwa/zombie",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/pwaAnalytics.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/qwen-edit/config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/qwen-edit.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/qwen-edit/config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/qwen-edit.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/qwen-edit/config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/qwen-edit.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/qwen-edit/versions",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/qwen-edit.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/qwen-edit/versions",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/qwen-edit.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/qwen-edit/versions/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/qwen-edit.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/qwen-edit/versions/:param/duplicate",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/qwen-edit.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/qwen-edit/versions/active",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/qwen-edit.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reports",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/reports.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reports/:param/dismiss",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/reports.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reports/:param/resolve",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/reports.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reports/csam/list",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/csam.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reports/csam/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/csam.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reports/feedback",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/feedback.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reports/feedback/:param/respond",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/feedback.ts",
+        "admin/src/api/generation-feedback.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reports/feedback/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/feedback.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reports/generation-feedback",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/generation-feedback.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reports/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/reports.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/story-chain/scripts",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/storyChain.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/story-chain/scripts",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/storyChain.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/test-accounts",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/testAccounts.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/test-accounts",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/testAccounts.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/test-accounts/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/testAccounts.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/users.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/users/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/users.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/users.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/users/:param/role",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/users.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/:param/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/users.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/users/:param/status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/users.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/active-count",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/users.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/duplicates",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/users.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/kpis",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/users.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/overview",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/users.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/utm-links",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/UtmLinksPage.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/utm-links",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/UtmLinksPage.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/utm-links/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/UtmLinksPage.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/utm-links/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/UtmLinksPage.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/utm-links/sources",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/utmLinks.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/video-review",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/video-review/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/video-review/:param/log",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/video-review/:param/prompt",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/video-review/:param/review",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/video-review/batch-review",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/video-review/gpu-status",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/video-review/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/video-review/template-options",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/video-review/today-by-gpu",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/video-review/translate",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/videoReview.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/video/config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/video.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/video/ltx-config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/video.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/video/ltx-config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/video.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/video/ltx-config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/video.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/voices",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/voices.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/voices",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/voices.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/voices/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/voices.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/voices/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/voices.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/voices/:param/toggle",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/voices.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/wallet/adjust",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/wallet.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/wallet/grant-subscription",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/wallet.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/wallet/ledger",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/wallet.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/wallet/packages",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/wallet.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/wallet/purchase-countries",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/wallet.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/wallet/purchases",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/wallet.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/wallet/stats",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/wallet.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/wallet/subscription-strategy",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/SubscriptionStrategyPanel.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/wallet/subscription-strategy",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/SubscriptionStrategyPanel.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/wallet/user/:param",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/wallet.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/wallet/vip-config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/RechargePackagesPage.tsx",
+        "admin/src/pages/settings/VipConfigPage.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/wallet/vip-config",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/pages/settings/RechargePackagesPage.tsx",
+        "admin/src/pages/settings/VipConfigPage.tsx"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/ai-body/:param",
+      "frontendCallsites": [
+        "frontend/src/api/ai-body.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai-body/enhance",
+      "frontendCallsites": [
+        "frontend/src/api/ai-body.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai-body/enhance-sync",
+      "frontendCallsites": [
+        "frontend/src/api/ai-body.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai-body/history",
+      "frontendCallsites": [
+        "frontend/src/api/ai-body.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai-body/status/:param",
+      "frontendCallsites": [
+        "frontend/src/api/ai-body.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/animate/:param",
+      "frontendCallsites": [
+        "frontend/src/api/animate.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/animate/cancel/:param",
+      "frontendCallsites": [
+        "frontend/src/api/animate.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/animate/cost",
+      "frontendCallsites": [
+        "frontend/src/api/animate.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/animate/history",
+      "frontendCallsites": [
+        "frontend/src/api/animate.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/animate/refund/:param",
+      "frontendCallsites": [
+        "frontend/src/api/animate.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/animate/start",
+      "frontendCallsites": [
+        "frontend/src/api/animate.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/animate/status/:param",
+      "frontendCallsites": [
+        "frontend/src/api/animate.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/guest",
+      "frontendCallsites": [
+        "frontend/src/api/auth.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "frontendCallsites": [
+        "frontend/src/api/auth.ts"
+      ],
+      "adminCallsites": [
+        "admin/src/api/auth.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "frontendCallsites": [
+        "frontend/src/api/auth.ts"
+      ],
+      "adminCallsites": [
+        "admin/src/api/auth.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "frontendCallsites": [
+        "frontend/src/api/auth.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/image/async",
+      "frontendCallsites": [
+        "frontend/src/api/chat.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/video",
+      "frontendCallsites": [
+        "frontend/src/api/chat.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/video/:param",
+      "frontendCallsites": [
+        "frontend/src/api/chat.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/chat/videos/:param",
+      "frontendCallsites": [
+        "frontend/src/api/videos.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/videos/mine",
+      "frontendCallsites": [
+        "frontend/src/api/videos.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/videos/public",
+      "frontendCallsites": [
+        "frontend/src/api/videos.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/videos/status",
+      "frontendCallsites": [
+        "frontend/src/api/chat.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/checkin",
+      "frontendCallsites": [
+        "frontend/src/api/checkin.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/checkin/history",
+      "frontendCallsites": [
+        "frontend/src/api/checkin.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/checkin/status",
+      "frontendCallsites": [
+        "frontend/src/api/checkin.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/config",
+      "frontendCallsites": [
+        "frontend/src/lib/analytics/runtimeConfig.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/creations/batch-delete",
+      "frontendCallsites": [
+        "frontend/src/api/creations.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/creations/retry",
+      "frontendCallsites": [
+        "frontend/src/api/creations.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/discover/feed",
+      "frontendCallsites": [
+        "frontend/src/api/discover.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/discover/p/:param",
+      "frontendCallsites": [
+        "frontend/src/api/discover.ts",
+        "frontend/src/pages/DiscoverPostPage.tsx"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/discover/templates",
+      "frontendCallsites": [
+        "frontend/src/api/discover.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/faceswap/cost",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/faceswap/image/start",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/faceswap/start",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/faceswap/tasks",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/faceswap/tasks/:param",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/faceswap/tasks/:param",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/faceswap/tasks/statuses",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/faceswap/templates",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/faceswap/tryon/start",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/faceswap/tryon/tasks",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/faceswap/tryon/tasks/:param",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/faceswap/tryon/tasks/statuses",
+      "frontendCallsites": [
+        "frontend/src/api/faceswap.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/gallery-set",
+      "frontendCallsites": [
+        "frontend/src/api/gallerySet.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/gallery-set/:param",
+      "frontendCallsites": [
+        "frontend/src/api/gallerySet.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/gallery-set/themes",
+      "frontendCallsites": [
+        "frontend/src/api/gallerySet.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/growth/invite/:param/og-data",
+      "frontendCallsites": [
+        "frontend/src/api/growth.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/growth/invite/bind",
+      "frontendCallsites": [
+        "frontend/src/api/growth.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/growth/invite/me",
+      "frontendCallsites": [
+        "frontend/src/api/growth.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/growth/records",
+      "frontendCallsites": [
+        "frontend/src/api/growth.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homepage/content",
+      "frontendCallsites": [
+        "frontend/src/api/homepage.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homepage/video-templates",
+      "frontendCallsites": [
+        "frontend/src/api/homepage.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/images",
+      "frontendCallsites": [
+        "frontend/src/api/images.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/images",
+      "frontendCallsites": [
+        "frontend/src/api/images.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/images/:param",
+      "frontendCallsites": [
+        "frontend/src/api/images.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/images/:param",
+      "frontendCallsites": [
+        "frontend/src/api/images.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/images/:param/refund",
+      "frontendCallsites": [
+        "frontend/src/api/images.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/images/:param/visibility",
+      "frontendCallsites": [
+        "frontend/src/api/images.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/images/mine",
+      "frontendCallsites": [
+        "frontend/src/api/images.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/images/statuses",
+      "frontendCallsites": [
+        "frontend/src/api/images.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/landing-presets/features/:param/presets",
+      "frontendCallsites": [
+        "frontend/src/api/adPreview.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/landing-presets/features/:param/presets/:param",
+      "frontendCallsites": [
+        "frontend/src/api/adPreview.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/media/refresh-download-link",
+      "frontendCallsites": [
+        "frontend/src/utils/download.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "frontendCallsites": [
+        "frontend/src/api/notifications.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/notifications:param",
+      "frontendCallsites": [
+        "frontend/src/api/notifications.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "",
+      "evidence": [
+        "静态文本候选，待人工核验"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/notifications/:param",
+      "frontendCallsites": [
+        "frontend/src/api/notifications.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/:param/click",
+      "frontendCallsites": [
+        "frontend/src/api/notifications.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/:param/read",
+      "frontendCallsites": [
+        "frontend/src/api/notifications.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/delivery/:param/click",
+      "frontendCallsites": [
+        "frontend/src/api/notifications.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/read-all",
+      "frontendCallsites": [
+        "frontend/src/api/notifications.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/track/paywall-view",
+      "frontendCallsites": [
+        "frontend/src/api/notifications.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "frontendCallsites": [
+        "frontend/src/api/notifications.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/payments/order-status/:param",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/payments.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/push/public-key",
+      "frontendCallsites": [
+        "frontend/src/api/push.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/subscribe",
+      "frontendCallsites": [
+        "frontend/src/api/push.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/test",
+      "frontendCallsites": [
+        "frontend/src/api/push.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/unsubscribe",
+      "frontendCallsites": [
+        "frontend/src/api/push.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pwa/install-recorded",
+      "frontendCallsites": [
+        "frontend/src/api/pwa.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pwa/launch",
+      "frontendCallsites": [
+        "frontend/src/api/pwa.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports/feedback",
+      "frontendCallsites": [
+        "frontend/src/features/feedback/useFeedbackForm.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports/generation-feedback",
+      "frontendCallsites": [
+        "frontend/src/components/profile/VideoFeedbackModal.tsx"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/story-chain",
+      "frontendCallsites": [
+        "frontend/src/api/storyChain.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/story-chain/:param",
+      "frontendCallsites": [
+        "frontend/src/api/storyChain.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/story-chain/extract-last-frame",
+      "frontendCallsites": [
+        "frontend/src/api/storyChain.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/story-chain/scripts",
+      "frontendCallsites": [
+        "frontend/src/api/storyChain.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/story-chain/templates",
+      "frontendCallsites": [
+        "frontend/src/api/storyChain.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/telegram/mini-app/auth",
+      "frontendCallsites": [
+        "frontend/src/api/telegram.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/upload/presign",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/upload.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/upload/ugc/presign",
+      "frontendCallsites": [
+        "frontend/src/api/upload.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/me/change-password",
+      "frontendCallsites": [
+        "frontend/src/api/users.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/me/delete",
+      "frontendCallsites": [
+        "frontend/src/api/users.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/notifications",
+      "frontendCallsites": [
+        "frontend/src/api/users.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/users/me/notifications",
+      "frontendCallsites": [
+        "frontend/src/api/users.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/overview",
+      "frontendCallsites": [
+        "frontend/src/api/users.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/users/me/profile",
+      "frontendCallsites": [
+        "frontend/src/api/users.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/security",
+      "frontendCallsites": [
+        "frontend/src/api/users.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/me/set-password",
+      "frontendCallsites": [
+        "frontend/src/api/users.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/stats",
+      "frontendCallsites": [
+        "frontend/src/api/users.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sex-pose/positions",
+      "frontendCallsites": [
+        "frontend/src/api/sexPose.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sex-pose/start",
+      "frontendCallsites": [
+        "frontend/src/api/sexPose.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sex-pose/status/:param",
+      "frontendCallsites": [
+        "frontend/src/api/sexPose.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/upscale/:param",
+      "frontendCallsites": [
+        "frontend/src/api/upscale.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/upscale/:param",
+      "frontendCallsites": [
+        "frontend/src/api/upscale.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/upscale/start",
+      "frontendCallsites": [
+        "frontend/src/api/upscale.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/upscale/user/records",
+      "frontendCallsites": [
+        "frontend/src/api/upscale.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/view-shift/history",
+      "frontendCallsites": [
+        "frontend/src/api/viewShift.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/view-shift/start",
+      "frontendCallsites": [
+        "frontend/src/api/viewShift.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/view-shift/status/:param",
+      "frontendCallsites": [
+        "frontend/src/api/viewShift.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/voices/all",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/voices.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/voices/languages",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/voices.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/voices/recommended",
+      "frontendCallsites": [],
+      "adminCallsites": [
+        "admin/src/api/voices.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/ad-reward",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/balance",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/costs",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [
+        "admin/src/api/pricing.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/create-external-checkout",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/payments.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/crypto/create-payment",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/payments.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/crypto/refresh-payment",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/payments.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/crypto/status/:param",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/payments.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/external-checkout-billing-prefill",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/payments.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/external-payment-methods",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/payments.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/first-promo-status",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/promotions.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/first-promo-trigger",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/promotions.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/ledger",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/onboarding-segment",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/promotions.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/products",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [
+        "admin/src/api/wallet.ts"
+      ],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/share-reward",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/subscription",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/subscription/activate",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/subscription/cancel",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/subscription/claim-coins",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/subscriptions",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/verify-purchase",
+      "frontendCallsites": [
+        "frontend/src/api/wallet/account.ts"
+      ],
+      "adminCallsites": [],
+      "routeRegistration": "backend/src/bootstrap/registerApiRoutes.js",
+      "evidence": [
+        "静态文本候选，待人工核验",
+        "route registration scan"
+      ],
+      "classification": "待核实"
+    }
+  ],
+  "note": "静态文本候选均为待人工核验；缺少完整接口契约和业务语义基线，不能作为 Go 分流依据。"
+}

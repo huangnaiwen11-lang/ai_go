@@ -1,0 +1,212 @@
+[
+  {
+    "case_id": "guest-cannot-submit-generation-before-binding",
+    "consumer": {"method": "POST", "path": "/api/v1/chat/image/async"},
+    "actor": {"account_status": "normal", "binding_state": "guest", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "portrait-image", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_image"},
+    "fixture": {"product_intent": "template_image", "input_kind": "prompt_only"},
+    "expected": {
+      "http": {"status": 403, "error_code": "ACCOUNT_BINDING_REQUIRED"},
+      "database_before": {"creations": 0, "reservations": 0, "ledger_entries": 0},
+      "database_after": {"creations": 0, "reservations": 0, "ledger_entries": 0},
+      "side_effects": [],
+      "technical_calls": []
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "free-user-video-premium-features-require-vip",
+    "consumer": {"method": "POST", "path": "/api/v1/chat/video"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "motion-video", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_video"},
+    "fixture": {"product_intent": "template_video", "duration_seconds": 10, "audio_enabled": true, "input_image_count": 2, "membership": "free"},
+    "expected": {
+      "http": {"status": 403, "error_code": "VIP_REQUIRED"},
+      "database_before": {"creations": 0, "reservations": 0, "ledger_entries": 0},
+      "database_after": {"creations": 0, "reservations": 0, "ledger_entries": 0},
+      "side_effects": [],
+      "technical_calls": []
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "paid-image-rejects-insufficient-diamonds",
+    "consumer": {"method": "POST", "path": "/api/v1/chat/image/async"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "portrait-image", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_image"},
+    "fixture": {"product_intent": "template_image", "daily_image_quota_remaining": 0, "diamond_balance": 19, "quoted_diamonds": 20},
+    "expected": {
+      "http": {"status": 402, "error_code": "INSUFFICIENT_FUNDS"},
+      "database_before": {"creations": 0, "reservations": 0, "ledger_entries": 0, "diamond_balance": 19},
+      "database_after": {"creations": 0, "reservations": 0, "ledger_entries": 0, "diamond_balance": 19},
+      "side_effects": [],
+      "technical_calls": []
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "vip-daily-free-image-works-with-zero-balance",
+    "consumer": {"method": "POST", "path": "/api/v1/chat/image/async"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "portrait-image", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_image"},
+    "fixture": {"product_intent": "template_image", "membership": "vip", "daily_image_quota_remaining": 1, "diamond_balance": 0, "quoted_diamonds": 20},
+    "expected": {
+      "http": {"status": 200, "error_code": "OK"},
+      "database_before": {"creations": 0, "reservations": 0, "ledger_entries": 0, "daily_image_quota_remaining": 1, "diamond_balance": 0},
+      "database_after": {"creations": 1, "reservations": 1, "ledger_entries": 1, "daily_image_quota_remaining": 0, "diamond_balance": 0},
+      "side_effects": ["creation.placeholder.created", "entitlement.daily_image_reserved", "generation.submitted"],
+      "technical_calls": [{"atom": "text_to_image", "callback_purpose": "go_main_task_callback", "protocol_version": "v1", "idempotency_key": "case-vip-free-image-1"}]
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "concurrent-last-free-quota-is-reserved-once",
+    "consumer": {"method": "POST", "path": "/api/v1/chat/image/async"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "portrait-image", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_image"},
+    "fixture": {"product_intent": "template_image", "concurrent_request_count": 2, "daily_image_quota_remaining": 1, "diamond_balance": 0},
+    "expected": {
+      "http": {"status": 200, "error_code": "ONE_ACCEPTED_ONE_INSUFFICIENT_FUNDS"},
+      "database_before": {"creations": 0, "reservations": 0, "ledger_entries": 0, "daily_image_quota_remaining": 1},
+      "database_after": {"creations": 1, "reservations": 1, "ledger_entries": 1, "daily_image_quota_remaining": 0},
+      "side_effects": ["creation.placeholder.created.once", "entitlement.daily_image_reserved.once", "generation.submitted.once"],
+      "technical_calls": [{"atom": "text_to_image", "callback_purpose": "go_main_task_callback", "protocol_version": "v1", "idempotency_key": "case-concurrent-last-quota"}]
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "explicit-submission-failure-reverses-reservation-immediately",
+    "consumer": {"method": "POST", "path": "/api/v1/chat/image/async"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "portrait-image", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_image"},
+    "fixture": {"product_intent": "template_image", "daily_image_quota_remaining": 0, "diamond_balance": 20, "generation_submission": "explicit_failure"},
+    "expected": {
+      "http": {"status": 502, "error_code": "GENERATION_SUBMISSION_FAILED"},
+      "database_before": {"creations": 0, "reservations": 0, "ledger_entries": 0, "diamond_balance": 20},
+      "database_after": {"creations": 1, "reservations": 1, "ledger_entries": 2, "diamond_balance": 20, "creation_status": "failed", "reservation_status": "reversed"},
+      "side_effects": ["creation.placeholder.created", "ledger.debit.recorded", "ledger.reversal.recorded", "creation.failed"],
+      "technical_calls": [{"atom": "text_to_image", "callback_purpose": "go_main_task_callback", "protocol_version": "v1", "idempotency_key": "case-submit-failure-1"}]
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "technical-failure-reverses-reservation-once",
+    "consumer": {"method": "POST", "path": "/internal/v1/generation/callbacks"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "portrait-image", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_image"},
+    "fixture": {"callback_event": "technical_failure", "creation_status": "generating", "reservation_status": "reserved"},
+    "expected": {
+      "http": {"status": 200, "error_code": "OK"},
+      "database_before": {"creations": 1, "reservations": 1, "ledger_entries": 1, "diamond_balance": 0, "creation_status": "generating", "reservation_status": "reserved"},
+      "database_after": {"creations": 1, "reservations": 1, "ledger_entries": 2, "diamond_balance": 20, "creation_status": "failed", "reservation_status": "reversed"},
+      "side_effects": ["ledger.reversal.recorded", "creation.failed", "creation.status_published"],
+      "technical_calls": []
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "review-confiscation-keeps-reservation-without-refund",
+    "consumer": {"method": "POST", "path": "/internal/v1/generation/callbacks"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "reviewed": true, "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "portrait-image", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_image"},
+    "fixture": {"callback_event": "review_confiscated", "creation_status": "generating", "reservation_status": "reserved"},
+    "expected": {
+      "http": {"status": 200, "error_code": "OK"},
+      "database_before": {"creations": 1, "reservations": 1, "ledger_entries": 1, "daily_image_quota_remaining": 0, "creation_status": "generating", "reservation_status": "reserved"},
+      "database_after": {"creations": 1, "reservations": 1, "ledger_entries": 1, "daily_image_quota_remaining": 0, "creation_status": "confiscated", "reservation_status": "confiscated"},
+      "side_effects": ["creation.delivery.withheld", "creation.confiscation_reason.recorded", "creation.status_published"],
+      "technical_calls": []
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "text-to-video-orchestrates-two-steps-with-one-settlement",
+    "consumer": {"method": "POST", "path": "/api/v1/chat/video"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "motion-video", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_video"},
+    "fixture": {"product_intent": "text_to_video", "duration_seconds": 5, "membership": "vip", "daily_video_quota_remaining": 1, "daily_image_quota_remaining": 10, "diamond_balance": 50},
+    "expected": {
+      "http": {"status": 200, "error_code": "OK"},
+      "database_before": {"creations": 0, "creation_steps": 0, "reservations": 0, "ledger_entries": 0, "daily_video_quota_remaining": 1, "daily_image_quota_remaining": 10},
+      "database_after": {"creations": 1, "creation_steps": 2, "reservations": 1, "ledger_entries": 1, "daily_video_quota_remaining": 0, "daily_image_quota_remaining": 10},
+      "side_effects": ["video.parent.placeholder.created", "video.first_frame.step.created", "video.render.step.planned", "entitlement.daily_video_reserved", "generation.first_frame.submitted"],
+      "technical_calls": [{"atom": "text_to_image", "callback_purpose": "go_main_first_frame_callback", "protocol_version": "v1", "idempotency_key": "case-t2v-first-frame-1"}]
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "payment-callback-replay-credits-own-ledger-once",
+    "consumer": {"method": "POST", "path": "/internal/v1/payments/paycores/callbacks"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "not_applicable", "version": "not_applicable", "content_surface": "not_applicable", "product_mode": "payment"},
+    "fixture": {"provider": "paycores", "provider_transaction_id": "case-provider-transaction-1", "replay_count": 2, "credited_diamonds": 100},
+    "expected": {
+      "http": {"status": 200, "error_code": "OK"},
+      "database_before": {"payment_orders": 1, "settled_external_transactions": 0, "ledger_entries": 0, "diamond_balance": 0},
+      "database_after": {"payment_orders": 1, "settled_external_transactions": 1, "ledger_entries": 1, "diamond_balance": 100},
+      "side_effects": ["ledger.payment_credit.recorded.once", "payment.callback.acknowledged.twice"],
+      "technical_calls": []
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "banned-account-invalidates-existing-session-immediately",
+    "consumer": {"method": "GET", "path": "/api/v1/auth/me"},
+    "actor": {"account_status": "banned", "binding_state": "bound", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "not_applicable", "version": "not_applicable", "content_surface": "not_applicable", "product_mode": "identity"},
+    "fixture": {"session_state": "issued_before_ban", "account_state_transition": "normal_to_banned"},
+    "expected": {
+      "http": {"status": 401, "error_code": "ACCOUNT_SESSION_INVALID"},
+      "database_before": {"users": 1, "active_sessions": 1, "account_status": "normal", "session_version": 3},
+      "database_after": {"users": 1, "active_sessions": 0, "account_status": "banned", "session_version": 4},
+      "side_effects": ["identity.sessions.invalidated"],
+      "technical_calls": []
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "reviewed-user-receives-only-sfw-template-manifest",
+    "consumer": {"method": "GET", "path": "/api/v1/homepage/content"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "reviewed": true, "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "catalog-manifest", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_catalog"},
+    "fixture": {"client_platform": "web", "product_mode": "template_image", "requested_content_surface": "all"},
+    "expected": {
+      "http": {"status": 200, "error_code": "OK"},
+      "database_before": {"template_manifests": 1, "sfw_templates": 5, "nsfw_templates": 5},
+      "database_after": {"template_manifests": 1, "sfw_templates": 5, "nsfw_templates": 5},
+      "side_effects": ["catalog.sfw_manifest.returned"],
+      "technical_calls": []
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "template-manifest-is-identical-across-web-ios-and-android",
+    "consumer": {"method": "GET", "path": "/api/v1/homepage/content"},
+    "actor": {"account_status": "normal", "binding_state": "bound", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "catalog-manifest", "version": "2026-09-04", "content_surface": "sfw", "product_mode": "template_catalog"},
+    "fixture": {"client_platforms": ["web", "ios", "android"], "product_mode": "template_image", "content_surface": "sfw"},
+    "expected": {
+      "http": {"status": 200, "error_code": "OK"},
+      "database_before": {"template_manifests": 1, "template_entries": 5},
+      "database_after": {"template_manifests": 1, "template_entries": 5},
+      "side_effects": ["catalog.manifest_hash.equal_for_all_clients"],
+      "technical_calls": []
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  },
+  {
+    "case_id": "guest-binding-upgrades-the-same-user-without-registration-reward",
+    "consumer": {"method": "POST", "path": "/api/v1/auth/bind"},
+    "actor": {"account_status": "normal", "binding_state": "guest", "user_timezone": "Asia/Shanghai"},
+    "template": {"id": "not_applicable", "version": "not_applicable", "content_surface": "not_applicable", "product_mode": "identity"},
+    "fixture": {"binding_channel": "email", "existing_user_assets": 2, "existing_creations": 1, "existing_diamond_balance": 0},
+    "expected": {
+      "http": {"status": 200, "error_code": "OK"},
+      "database_before": {"users": 1, "bound_identities": 0, "assets": 2, "creations": 1, "ledger_entries": 0, "registration_reward_entries": 0},
+      "database_after": {"users": 1, "bound_identities": 1, "assets": 2, "creations": 1, "ledger_entries": 0, "registration_reward_entries": 0},
+      "side_effects": ["identity.guest_upgraded_in_place"],
+      "technical_calls": []
+    },
+    "source": {"kind": "confirmed_business_baseline"}
+  }
+]

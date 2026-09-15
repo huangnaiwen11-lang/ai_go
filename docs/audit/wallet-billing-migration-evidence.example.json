@@ -1,0 +1,29 @@
+{
+  "stage": "wallet_billing",
+  "evidence": [
+    {
+      "kind": "wallet_creation_semantics",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "ledger_pagination",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "balance_mutation_invariant",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "mutation_idempotency",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "payment_callback_boundary",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "kind": "entitlement_convergence",
+      "artifactRef": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  ]
+}

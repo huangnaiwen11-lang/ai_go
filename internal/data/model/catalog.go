@@ -1,0 +1,35 @@
+package model
+
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+)
+
+// TemplateDocument 表示模板持久化对象。
+type TemplateDocument struct {
+	ID             string    `bson:"_id"`
+	TemplateID     string    `bson:"template_id"`
+	Version        int64     `bson:"version"`
+	ContentSurface string    `bson:"content_surface"`
+	Mode           string    `bson:"mode"`
+	SortOrder      int32     `bson:"sort_order"`
+	Enabled        bool      `bson:"enabled"`
+	Parameters     bson.Raw  `bson:"parameters"`
+	CreatedAt      time.Time `bson:"created_at"`
+	UpdatedAt      time.Time `bson:"updated_at"`
+}
+
+// AssetDocument 表示资产持久化对象。
+type AssetDocument struct {
+	ID         string `bson:"_id"`
+	OwnerType  string `bson:"owner_type"`
+	OwnerID    string `bson:"owner_id"`
+	AssetKind  string `bson:"asset_kind"`
+	StorageKey string `bson:"storage_key"`
+	Status     string `bson:"status"`
+	// ContentType 与 ByteSize 是用户上传素材的内容合同；生成结果资产可保持零值以兼容旧记录。
+	ContentType string    `bson:"content_type,omitempty"`
+	ByteSize    int64     `bson:"byte_size,omitempty"`
+	CreatedAt   time.Time `bson:"created_at"`
+}

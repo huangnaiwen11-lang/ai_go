@@ -1,0 +1,80 @@
+{
+  "classification": "待核实",
+  "migrationPermission": "未授予",
+  "sourceScope": "仅静态源码审计",
+  "goRouteEnabled": false,
+  "balance": {
+    "route": {
+      "method": "GET",
+      "path": "/api/wallet/balance",
+      "aliases": ["/api/v1/wallet/balance"]
+    },
+    "mayCreateWallet": true,
+    "cacheControl": "private, no-store, max-age=0, must-revalidate",
+    "varyAuthorization": true,
+    "cacheStatus": true,
+    "mayExposeStale": true
+  },
+  "ledger": {
+    "route": {
+      "method": "GET",
+      "path": "/api/wallet/ledger",
+      "aliases": ["/api/v1/wallet/ledger"]
+    },
+    "defaultLimit": 50,
+    "minimumLimit": 1,
+    "maximumSkip": 100000,
+    "cursorPrecedesSkip": true
+  },
+  "mutation": {
+    "entryPoint": "applyMutation",
+    "productionTxn": true,
+    "preventsNegative": true,
+    "idempotentReplay": true,
+    "publishAfterCommit": true
+  },
+  "payment": {
+    "owner": "PayCores",
+    "webhookOwner": "PayCores",
+    "waitForBackendReady": true,
+    "proxyRoutes": [
+      {
+        "method": "GET",
+        "path": "/api/wallet/external-payment-methods",
+        "aliases": ["/api/v1/wallet/external-payment-methods"]
+      },
+      {
+        "method": "POST",
+        "path": "/api/wallet/create-external-checkout",
+        "aliases": ["/api/v1/wallet/create-external-checkout"]
+      },
+      {
+        "method": "POST",
+        "path": "/api/wallet/external-checkout-billing-prefill",
+        "aliases": ["/api/v1/wallet/external-checkout-billing-prefill"]
+      },
+      {
+        "method": "POST",
+        "path": "/api/wallet/crypto/create-payment",
+        "aliases": ["/api/v1/wallet/crypto/create-payment"]
+      },
+      {
+        "method": "POST",
+        "path": "/api/wallet/crypto/refresh-payment",
+        "aliases": ["/api/v1/wallet/crypto/refresh-payment"]
+      },
+      {
+        "method": "GET",
+        "path": "/api/wallet/crypto/status/:orderId",
+        "aliases": ["/api/v1/wallet/crypto/status/:orderId"]
+      }
+    ],
+    "callback": {
+      "method": "POST",
+      "path": "/api/internal/payment-confirmed",
+      "aliases": ["/api/v1/internal/payment-confirmed"]
+    },
+    "callbackRequiresV2HMAC": true,
+    "callbackRejectsNonceReplay": true
+  }
+}

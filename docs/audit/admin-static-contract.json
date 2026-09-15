@@ -1,0 +1,15 @@
+{
+  "classification": "待核实",
+  "migrationPermission": "未授予",
+  "sourceScope": "仅静态源码审计",
+  "vueShellEnabled": false,
+  "goRouteEnabled": false,
+  "browserEntry": "/admin/",
+  "apiEntry": "/api",
+  "access": {
+    "superAdminAllPaths": true,
+    "legacyAdminWithoutScopesAllPaths": true,
+    "scopedAdminRequiresPathScope": true
+  },
+  "auditWriteFailureDoesNotBlockBusiness": true
+}

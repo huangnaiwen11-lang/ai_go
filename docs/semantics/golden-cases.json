@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 2,
+  "rule": "每个用例分别记录证据状态、迁移资格和权威矩阵的精确路由引用；只有“确认迁移”精确路由可进入 Go 放行，Go 影子执行不得产生真实副作用。",
+  "cases": [
+    {
+      "id": "gateway-growth-ping",
+      "domain": "api-gateway",
+      "sourceEvidence": [
+        "backend/src/modules/growth/growth.routes.js",
+        "backend/src/server.js",
+        "backend/src/middleware/rateLimiterFactory.js",
+        "internal/gateway/proxy_test.go 的 TestHandlerUsesNodeAdmissionBeforeLocalPing",
+        "Node 与 Gateway 本机冻结成功响应字节级比对"
+      ],
+      "expected": "仅当精确开关启用 GET /api/growth/ping 时，Gateway 才先向 Node 发起一次准入请求。仅在 Node 返回未编码 200 且正文逐字节等于冻结成功基线时，Gateway 回放本地成功 envelope；入口 X-Request-Id 与 Node 的安全端到端响应头保持既定语义。POST、尾斜杠/相邻路径、/api/v1/growth/ping 及编码路径均回退 Node。",
+      "evidenceStatus": "源码、Gateway 契约测试与本机字节级基线；非生产观测",
+      "migrationEligibility": "确认迁移",
+      "matrixRouteRefs": ["GET /api/growth/ping"]
+    },
+    {
+      "id": "gateway-growth-ping-rate-limited",
+      "domain": "api-gateway",
+      "sourceEvidence": [
+        "backend/src/server.js 的全局 limiter 注册",
+        "backend/src/middleware/globalRateLimitPolicy.js 的全局限流跳过策略",
+        "backend/src/middleware/rateLimiterFactory.js 的 RedisStore prefix: ratelimit:global:",
+        "internal/gateway/proxy_test.go 的 TestHandlerRelaysNodeRateLimitBeforeLocalPing"
+      ],
+      "expected": "同一可信客户端 IP 达到 Node 全局阈值时，Node 准入返回完整 429/RATE_LIMITED envelope；Gateway 不回放本地成功响应，逐字节透传 Node 状态、正文以及 Content-Type、RateLimit-*、Retry-After 和 X-Request-Id。",
+      "evidenceStatus": "源码与 Gateway 契约测试；未声明生产阈值或生产观测",
+      "migrationEligibility": "确认迁移",
+      "matrixRouteRefs": ["GET /api/growth/ping"]
+    },
+    {
+      "id": "gateway-growth-ping-switch-fail-closed",
+      "domain": "api-gateway",
+      "sourceEvidence": [
+        "internal/gateway/route_switch.go",
+        "internal/gateway/route_switch_test.go 的 TestFileRouteSwitchFailsClosedAndReloads、TestFileRouteSwitchRejectsIncompleteOrUnknownDocuments",
+        "internal/gateway/proxy_test.go 的 TestHandlerFallsBackWhenFileRouteSwitchFailsClosed"
+      ],
+      "expected": "开关文件将 GET /api/growth/ping 设为 false，或文件不可读、缺失、畸形、缺少 routes、包含未知键时，Gateway 完整回退 Node 默认代理，不执行本地准入或本地回放；Node 的状态、正文和端到端响应头由默认代理处理。",
+      "evidenceStatus": "Gateway 契约测试；非生产观测",
+      "migrationEligibility": "确认迁移",
+      "matrixRouteRefs": ["GET /api/growth/ping"]
+    },
+    {
+      "id": "gateway-growth-ping-node-baseline-drift",
+      "domain": "api-gateway",
+      "sourceEvidence": [
+        "internal/gateway/proxy.go 的冻结字节比较与 DisableCompression 准入客户端",
+        "internal/gateway/proxy_test.go 的 TestHandlerUsesNodeAdmissionBeforeLocalPing、TestHandlerRelaysEncodedNodeSuccessWithoutDecompression、TestHandlerRelaysLargeDriftResponseAfterBoundedPrefixInspection"
+      ],
+      "expected": "Node 返回 200 但正文与冻结字节基线不同，或响应带 Content-Encoding 时，Gateway 不进行本地回放；已读比较前缀与剩余响应按原顺序透传，完整保留 Node 的状态、正文与端到端响应头。",
+      "evidenceStatus": "Gateway 契约测试；非生产观测",
+      "migrationEligibility": "确认迁移",
+      "matrixRouteRefs": ["GET /api/growth/ping"]
+    },
+    {"id": "read-authorized", "domain": "api", "sourceEvidence": ["frontend/src/api/client.ts"], "expected": "保留 success/data envelope、字段类型、分页和排序默认值", "evidenceStatus": "源码基线", "migrationEligibility": "待核实（非路由放行）", "matrixRouteRefs": ["GET /api/homepage/video-templates", "GET /api/v1/homepage/video-templates"]},
+    {"id": "read-forbidden", "domain": "authz", "sourceEvidence": ["backend/src/middleware/adminAuth.js"], "expected": "维持原 HTTP 状态、业务 code、details 和 requestId，不泄露资源", "evidenceStatus": "源码基线", "migrationEligibility": "待核实（非路由放行）", "matrixRouteRefs": []},
+    {"id": "generation-terminal-success", "domain": "generation", "sourceEvidence": ["backend/src/modules/generation-callback/generation-callback.service.js", "backend/src/modules/user/profile-generation-stream.service.js", "frontend/src/hooks/useGenerationLifecycleStream.ts"], "expected": "校验回调后更新唯一任务事实并发布完成事件。Node 在建立 stream 时先订阅 change，再异步排入权威 snapshot，因此首帧可能是 change；后续 snapshot 用于状态重建，迁移不得擅自引入 snapshot barrier。前端继续刷新记录。", "evidenceStatus": "源码基线；首帧竞争窗口待受控或真实捕获", "migrationEligibility": "待核实（非路由放行）", "matrixRouteRefs": ["POST /api/v1/internal/generation-callback", "GET /api/users/me/generations/stream"]},
+    {"id": "generation-duplicate-callback", "domain": "generation", "sourceEvidence": ["backend/src/modules/generation-callback/generation-callback-auth.service.js"], "expected": "重复 nonce 或重复任务回调被拒绝或幂等确认，不重复写结果、不重复结算", "evidenceStatus": "源码基线", "migrationEligibility": "待核实（非路由放行）", "matrixRouteRefs": ["POST /api/v1/internal/generation-callback"]},
+    {"id": "generation-cancel-timeout", "domain": "generation", "sourceEvidence": ["frontend/src/api/animate.ts", "backend/src/modules/generation-callback/"], "expected": "沿用 pending/processing/completed/failed/cancelled 状态和原取消、超时、退款规则。这是 Animate 历史 Node-only 收敛，绝不构成新增 Go 路由、服务、写入方或结算协调许可。", "evidenceStatus": "源码基线", "migrationEligibility": "历史 Node-only", "matrixRouteRefs": ["POST /api/animate/cancel/:taskId", "POST /api/creations/retry [type=animate]"]},
+    {"id": "image-create-t2i-i2i", "domain": "generation", "sourceEvidence": ["frontend/src/api/chat.ts", "frontend/src/features/createImage/useCreateImageGeneration.ts", "backend/src/modules/chat/chat.routes.image.js", "backend/src/modules/chat/image-generation-submission.service.js", "backend/src/modules/chat/image-generation-submission.service.test.js", "backend/src/modules/chat/image-generation-convergence.arch.test.js"], "expected": "T2I 在未提供 inputImages 时创建图片任务；I2I 在提供 1–2 张 inputImages 时走同一付费路由。两种分支均保持鉴权、账号资格、敏感限流、GeneratedImage 版本钉死、幂等提交和 callback 竞争收敛；不得在缺少运行基线时改变写入方。", "evidenceStatus": "源码与本机合同测试；认证、扣费、回调与结算待受控或真实捕获", "migrationEligibility": "待核实（非路由放行）", "matrixRouteRefs": ["POST /api/chat/image/async"]},
+    {"id": "video-create-i2v", "domain": "generation", "sourceEvidence": ["frontend/src/api/chat.ts", "frontend/src/features/createVideo/hooks/useCreateVideoGeneration.ts", "backend/src/modules/chat/chat.routes.video.js", "backend/src/modules/chat/video-start.service.js", "backend/src/modules/chat/video-start.service.test.js", "backend/src/modules/chat/chat.routes.video.batch.test.js"], "expected": "I2V 在 imageUrl 存在时创建视频任务，并保留订阅能力限制、敏感限流、状态机、扣费/退款、提交幂等和 callback 语义；同一路径的 prompt-only T2V 分支不因 I2V 审计而获得迁移许可。GPU/provider 执行始终由 generation-service 负责。", "evidenceStatus": "源码与本机合同测试；认证、账务、callback 与跨实例状态待受控或真实捕获", "migrationEligibility": "待核实（非路由放行）", "matrixRouteRefs": ["POST /api/chat/video [imageUrl present]"]},
+    {"id": "sse-snapshot-reconnect", "domain": "realtime", "sourceEvidence": ["frontend/src/hooks/useGenerationLifecycleStream.ts", "frontend/src/hooks/__tests__/useGenerationLifecycleStream.test.tsx"], "expected": "EventSource 重连后最终获得权威 snapshot；不承诺 snapshot 必为首帧。change 只触发对应缓存失效和一次完成通知。", "evidenceStatus": "源码+测试基线；首帧顺序待受控或真实捕获", "migrationEligibility": "待核实（非路由放行）", "matrixRouteRefs": ["GET /api/users/me/generations/stream"]},
+    {"id": "upload-expired-signature", "domain": "media", "sourceEvidence": ["frontend/src/api/upload.ts"], "expected": "presign 后直传行为、签名过期错误和对象权限保持一致", "evidenceStatus": "源码基线", "migrationEligibility": "待核实（非路由放行）", "matrixRouteRefs": []},
+    {"id": "wallet-insufficient-balance", "domain": "billing", "sourceEvidence": ["backend/src/modules/wallet/", "backend/src/modules/wallet/wallet.ledger.transaction.test.js"], "expected": "余额不足、幂等键、并发更新和退款不变量保持一致", "evidenceStatus": "源码+测试基线", "migrationEligibility": "待核实（非路由放行）", "matrixRouteRefs": []},
+    {"id": "admin-high-risk-write", "domain": "admin", "sourceEvidence": ["admin/src/auth/adminAccess.ts", "backend/src/middleware/adminAuth.js"], "expected": "角色/permission-scoped 访问、二次确认和审计副作用保持一致", "evidenceStatus": "源码基线", "migrationEligibility": "待核实（非路由放行）", "matrixRouteRefs": []}
+  ]
+}

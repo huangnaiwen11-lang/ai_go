@@ -1,0 +1,17 @@
+{
+  "mode": "text_to_image",
+  "route": "POST /api/chat/image/async",
+  "scope": "inputImages=absent",
+  "evidence": [
+    { "kind": "request_validation", "artifactRef": "sha256:example-request-validation" },
+    { "kind": "authentication", "artifactRef": "sha256:example-authentication" },
+    { "kind": "account_eligibility", "artifactRef": "sha256:example-account-eligibility" },
+    { "kind": "sensitive_rate_limit", "artifactRef": "sha256:example-sensitive-rate-limit" },
+    { "kind": "content_policy", "artifactRef": "sha256:example-content-policy" },
+    { "kind": "billing_settlement", "artifactRef": "sha256:example-billing-settlement" },
+    { "kind": "task_persistence", "artifactRef": "sha256:example-task-persistence" },
+    { "kind": "idempotent_submission", "artifactRef": "sha256:example-idempotent-submission" },
+    { "kind": "callback_convergence", "artifactRef": "sha256:example-callback-convergence" },
+    { "kind": "refund_convergence", "artifactRef": "sha256:example-refund-convergence" }
+  ]
+}
