@@ -66,9 +66,23 @@ func Test作品历史未认证返回401(t *testing.T) {
 	assertErrorEnvelope(t, recorder, "UNAUTHORIZED")
 }
 
+// “全部作品”在前端合同中以省略 kind 表示；服务端必须将它投影为零值筛选，
+// 不能把正常首页请求误判为非法参数。
+func Test作品列表允许省略Kind以读取全部作品(t *testing.T) {
+	usecase := &recordingUsecase{page: &bizworks.Page{Items: []bizworks.Work{}}}
+	handler := NewHandler(staticAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "session-user"}}, usecase)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/works?limit=20", nil))
+
+	if recorder.Code != http.StatusOK || usecase.listQuery.UserID != "session-user" || usecase.listQuery.Kind != "" || usecase.listQuery.Limit != 20 {
+		t.Fatalf("status=%d query=%#v body=%s", recorder.Code, usecase.listQuery, recorder.Body.String())
+	}
+}
+
 func Test作品列表拒绝非法参数(t *testing.T) {
 	for _, target := range []string{
-		"/api/works", "/api/works?kind=animate", "/api/works?kind=image&limit=0", "/api/works?kind=video&limit=101", "/api/works?kind=image&cursor=invalid", "/api/works?kind=image&kind=video",
+		"/api/works?kind=animate", "/api/works?kind=image&limit=0", "/api/works?kind=video&limit=101", "/api/works?kind=image&cursor=invalid", "/api/works?kind=image&kind=video",
 	} {
 		t.Run(target, func(t *testing.T) {
 			handler := NewHandler(staticAuthenticator{identity: &sessionauth.AuthenticatedIdentity{UserID: "session-user"}}, &recordingUsecase{})

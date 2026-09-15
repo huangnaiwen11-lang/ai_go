@@ -122,12 +122,13 @@ func parseListQuery(request *http.Request, userID string) (bizworks.ListQuery, e
 		return bizworks.ListQuery{}, bizworks.ErrInvalidQuery
 	}
 	values := request.URL.Query()
-	kindRaw, err := parseRequiredSingle(values["kind"])
+	// kind 缺失代表前端“全部作品”筛选；只有显式提供时才校验其白名单值。
+	kindRaw, err := parseOptionalSingle(values["kind"])
 	if err != nil {
 		return bizworks.ListQuery{}, err
 	}
 	kind := bizworks.Kind(kindRaw)
-	if kind != bizworks.KindImage && kind != bizworks.KindVideo {
+	if kind != "" && kind != bizworks.KindImage && kind != bizworks.KindVideo {
 		return bizworks.ListQuery{}, bizworks.ErrInvalidQuery
 	}
 	limit, err := parseBoundedInteger(values["limit"], defaultWorksLimit, 1, maxWorksLimit)
