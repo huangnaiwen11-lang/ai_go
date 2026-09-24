@@ -47,21 +47,45 @@ func (writer *mongoDeferredRecipeWriter) Create(ctx context.Context, recipe *cre
 	if writer == nil || writer.recipes == nil {
 		return errors.New("deferred recipe collection is required")
 	}
-	if recipe == nil || recipe.StepID == "" || recipe.CreationID == "" || recipe.Atom != creations.AtomImageToVideo || recipe.ModelSKU == "" || len(recipe.InputTemplate) == 0 || recipe.Digest == "" || recipe.Status == "" || recipe.CreatedAt.IsZero() || recipe.UpdatedAt.IsZero() {
+	if recipe == nil || recipe.StepID == "" || recipe.CreationID == "" || recipe.Atom != creations.AtomImageToVideo || recipe.Digest == "" || recipe.Status == "" || recipe.CreatedAt.IsZero() || recipe.UpdatedAt.IsZero() {
 		return errors.New("deferred recipe is invalid")
 	}
-	_, err := writer.recipes.InsertOne(ctx, model.DeferredRecipeDocument{
-		ID:            recipe.StepID,
-		StepID:        recipe.StepID,
-		CreationID:    recipe.CreationID,
-		Atom:          string(recipe.Atom),
-		ModelSKU:      recipe.ModelSKU,
-		InputTemplate: append([]byte(nil), recipe.InputTemplate...),
-		Digest:        recipe.Digest,
-		Status:        string(recipe.Status),
-		CreatedAt:     recipe.CreatedAt,
-		UpdatedAt:     recipe.UpdatedAt,
-	})
+	document := model.DeferredRecipeDocument{
+		ID:         recipe.StepID,
+		StepID:     recipe.StepID,
+		CreationID: recipe.CreationID,
+		Atom:       string(recipe.Atom),
+		Digest:     recipe.Digest,
+		Status:     string(recipe.Status),
+		CreatedAt:  recipe.CreatedAt.UTC(),
+		UpdatedAt:  recipe.UpdatedAt.UTC(),
+	}
+	switch recipe.Protocol {
+	case creations.DeferredRecipeProtocolExecutionV2:
+		if recipe.B2B != nil || recipe.ModelSKU == "" || len(recipe.InputTemplate) == 0 {
+			return errors.New("deferred execution.v2 recipe is invalid")
+		}
+		document.Protocol = string(creations.DeferredRecipeProtocolExecutionV2)
+		document.ModelSKU = recipe.ModelSKU
+		document.InputTemplate = append([]byte(nil), recipe.InputTemplate...)
+	case creations.DeferredRecipeProtocolB2B:
+		if recipe.ModelSKU != "" || len(recipe.InputTemplate) != 0 || recipe.B2B == nil {
+			return errors.New("deferred B2B recipe is invalid")
+		}
+		normalized, err := recipe.B2B.Normalize()
+		if err != nil || normalized.Digest != recipe.Digest {
+			return errors.New("deferred B2B recipe is invalid")
+		}
+		payload, err := normalized.Recipe.Marshal()
+		if err != nil {
+			return errors.New("deferred B2B recipe is invalid")
+		}
+		document.Protocol = string(creations.DeferredRecipeProtocolB2B)
+		document.B2BRecipe = payload
+	default:
+		return errors.New("deferred recipe protocol is invalid")
+	}
+	_, err := writer.recipes.InsertOne(ctx, document)
 	if err != nil {
 		return fmt.Errorf("create deferred recipe: %w", err)
 	}
@@ -105,7 +129,11 @@ func (repository *mongoCreationRepository) ListSteps(ctx context.Context, creati
 	}
 	steps := make([]creations.CreationStep, 0, len(documents))
 	for _, document := range documents {
-		steps = append(steps, toBizCreationStep(document))
+		step, err := toBizCreationStep(document)
+		if err != nil {
+			return nil, fmt.Errorf("decode execution route for creation step %q: %w", document.ID, err)
+		}
+		steps = append(steps, step)
 	}
 	return steps, nil
 }
@@ -131,7 +159,11 @@ func (repository *mongoCreationRepository) Create(ctx context.Context, creation 
 
 	documents := make([]any, 0, len(steps))
 	for _, step := range steps {
-		documents = append(documents, newCreationStepDocument(step))
+		document, err := newCreationStepDocument(step)
+		if err != nil {
+			return fmt.Errorf("invalid execution route for creation step %q: %w", step.ID, err)
+		}
+		documents = append(documents, document)
 	}
 	if _, err := repository.steps.InsertMany(ctx, documents); err != nil {
 		if mongo.IsDuplicateKeyError(err) {
@@ -166,16 +198,24 @@ func newCreationDocument(creation *creations.Creation) model.CreationDocument {
 	}
 }
 
-func newCreationStepDocument(step creations.CreationStep) model.CreationStepDocument {
+func newCreationStepDocument(step creations.CreationStep) (model.CreationStepDocument, error) {
+	route, err := creations.NormalizeExecutionRoute(step.Route)
+	if err != nil {
+		return model.CreationStepDocument{}, err
+	}
 	return model.CreationStepDocument{
 		ID:              step.ID,
 		CreationID:      step.CreationID,
 		Sequence:        step.Sequence,
 		Atom:            string(step.Atom),
+		Provider:        route.Provider,
+		AccountRef:      route.AccountRef,
+		ContractVersion: route.ContractVersion,
+		MappingVersion:  route.MappingVersion,
 		SubmitStatus:    string(step.SubmitStatus),
 		CallbackVersion: step.CallbackVersion,
 		CreatedAt:       step.CreatedAt,
-	}
+	}, nil
 }
 
 func toBizCreation(document model.CreationDocument) *creations.Creation {
@@ -195,16 +235,24 @@ func toBizCreation(document model.CreationDocument) *creations.Creation {
 	}
 }
 
-func toBizCreationStep(document model.CreationStepDocument) creations.CreationStep {
+func toBizCreationStep(document model.CreationStepDocument) (creations.CreationStep, error) {
+	route, err := creations.NormalizeExecutionRoute(creations.ExecutionRoute{
+		Provider: document.Provider, AccountRef: document.AccountRef,
+		ContractVersion: document.ContractVersion, MappingVersion: document.MappingVersion,
+	})
+	if err != nil {
+		return creations.CreationStep{}, err
+	}
 	return creations.CreationStep{
 		ID:              document.ID,
 		CreationID:      document.CreationID,
 		Sequence:        document.Sequence,
 		Atom:            creations.StepAtom(document.Atom),
+		Route:           route,
 		SubmitStatus:    creations.StepSubmitStatus(document.SubmitStatus),
 		CallbackVersion: document.CallbackVersion,
 		CreatedAt:       document.CreatedAt,
-	}
+	}, nil
 }
 
 var _ creations.Repository = (*mongoCreationRepository)(nil)

@@ -15,6 +15,9 @@ type Config struct {
 	RouteSwitch     RouteSwitch
 	// GenerationCallback 仅处理两条精确的内部生成回调路径；未配置时仍由 Node 代理。
 	GenerationCallback http.Handler
+	// ProviderCallback 仅处理一条精确的 PolarStar B2B 终态回调路径；未配置时仍由 Node 代理。
+	// 它与 GenerationCallback 是两份不同合同，不能合并成一个处理器。
+	ProviderCallback http.Handler
 	// PaymentCallback 仅在独立开关和精确路由开关均放行后处理本地 PayCores 回调。
 	PaymentCallback http.Handler
 	// PaymentEntryHandler 仅在既有支付开关启用时处理已审查的支付读写入口。
@@ -27,12 +30,21 @@ type Config struct {
 	AuthEntryHandler http.Handler
 	// MediaHandler 仅处理两条用户自有图片素材路径；nil 时所有素材请求都继续代理 Node。
 	MediaHandler http.Handler
+	// R2MediaHandler implements the three frozen public/private R2 media routes.
+	// It stays nil until a complete R2 topology is configured.
+	R2MediaHandler http.Handler
 	// WalletViewHandler 仅处理两个已审核的钱包只读 GET 路径；nil 时继续代理 Node。
 	WalletViewHandler http.Handler
 	// WorksHandler 仅处理本人作品列表与单件详情；nil 时继续代理 Node。
-	WorksHandler        http.Handler
-	FeedbackHandler     http.Handler
-	NotificationHandler http.Handler
+	WorksHandler http.Handler
+	// CreationCancelHandler only accepts a durable user cancellation request;
+	// it does not return or manufacture a provider terminal state.
+	CreationCancelHandler http.Handler
+	FeedbackHandler       http.Handler
+	NotificationHandler   http.Handler
+	// AdminHandler 接管 /api/admin/ 下已迁移的管理接口。它自身必须执行管理员授权，
+	// 未实现的接口返回明确的迁移状态，不能再代理到可能不存在的旧 Node。
+	AdminHandler http.Handler
 	// GenerationStreamHandler 仅处理本地生成状态 SSE；未配置时继续代理 Node。
 	GenerationStreamHandler http.Handler
 	// AdmissionTimeout 仅约束本地金丝雀向 Node 发起的准入请求。零值表示不额外
@@ -47,16 +59,20 @@ type Gateway struct {
 	routeSwitch             RouteSwitch
 	admissionClient         *http.Client
 	generationCallback      http.Handler
+	providerCallback        http.Handler
 	paymentCallback         http.Handler
 	paymentEntryHandler     http.Handler
 	t2iHandler              http.Handler
 	videoHandler            http.Handler
 	authEntryHandler        http.Handler
 	mediaHandler            http.Handler
+	r2MediaHandler          http.Handler
 	walletViewHandler       http.Handler
 	worksHandler            http.Handler
+	creationCancelHandler   http.Handler
 	feedbackHandler         http.Handler
 	notificationHandler     http.Handler
+	adminHandler            http.Handler
 	generationStreamHandler http.Handler
 }
 
@@ -81,6 +97,7 @@ var confirmedLocalRoutes = [...]exactLocalRoute{
 var authEntryRoutes = [...]exactRouteKey{
 	{method: http.MethodPost, path: "/api/auth/register"},
 	{method: http.MethodPost, path: "/api/auth/login"},
+	{method: http.MethodPost, path: "/api/auth/local-google"},
 	{method: http.MethodPost, path: "/api/auth/guest"},
 	{method: http.MethodPost, path: "/api/auth/bind"},
 	{method: http.MethodGet, path: "/api/auth/me"},
@@ -103,6 +120,17 @@ var notificationRoutes = [...]exactRouteKey{
 	{method: http.MethodDelete, path: "/api/notifications/:id"},
 }
 
+var r2MediaRoutes = [...]exactRouteKey{
+	{method: http.MethodGet, path: "/api/v1/media/object"},
+	{method: http.MethodGet, path: "/api/media/image"},
+	// 前端实际请求的刷新路径（API 基址 `/api` + `/media/refresh-download-link`）。
+	{method: http.MethodPost, path: "/api/media/refresh-download-link"},
+	// 历史拼写保留为别名。**不要先删它**：route-switch 是 fail-closed 的，JSON 里若仍有
+	// 旧键而代码已不认，整份开关会失效 → 全部受约束路由回退 Node（502）。
+	// 退役顺序：代码同时认两种 → 改 deploy/route-switch.local.json → 最后才删本行。
+	{method: http.MethodPost, path: "/media/refresh-download-link"},
+}
+
 var generationStreamRoute = exactRouteKey{method: http.MethodGet, path: "/api/users/me/generations/stream"}
 
 func isConfirmedExactRoute(route exactRouteKey) bool {
@@ -112,6 +140,7 @@ func isConfirmedExactRoute(route exactRouteKey) bool {
 		{method: http.MethodPost, path: localCheckoutPath},
 		{method: http.MethodPost, path: localVerifyPurchasePath},
 		{method: http.MethodGet, path: localProductsPath},
+		{method: http.MethodGet, path: localPaymentMethodsPath},
 		{method: http.MethodGet, path: localOrderStatusRoute},
 	} {
 		if route == localRoute {
@@ -128,6 +157,11 @@ func isConfirmedExactRoute(route exactRouteKey) bool {
 	}
 	for _, localRoute := range []mediaRoute{mediaRouteUpload, mediaRouteRead} {
 		if route == localRoute.routeKey() {
+			return true
+		}
+	}
+	for _, localRoute := range r2MediaRoutes {
+		if route == localRoute {
 			return true
 		}
 	}
@@ -150,6 +184,9 @@ func isConfirmedExactRoute(route exactRouteKey) bool {
 		if route == worksRoute {
 			return true
 		}
+	}
+	if route == creationCancelRoute {
+		return true
 	}
 	for _, feedbackRoute := range feedbackRoutes {
 		if route == feedbackRoute {
@@ -184,16 +221,20 @@ func New(cfg Config) *Gateway {
 		routeSwitch:             routeSwitch,
 		admissionClient:         newAdmissionClient(cfg.AdmissionTimeout),
 		generationCallback:      cfg.GenerationCallback,
+		providerCallback:        cfg.ProviderCallback,
 		paymentCallback:         cfg.PaymentCallback,
 		paymentEntryHandler:     cfg.PaymentEntryHandler,
 		t2iHandler:              cfg.T2IHandler,
 		videoHandler:            cfg.VideoHandler,
 		authEntryHandler:        cfg.AuthEntryHandler,
 		mediaHandler:            cfg.MediaHandler,
+		r2MediaHandler:          cfg.R2MediaHandler,
 		walletViewHandler:       cfg.WalletViewHandler,
 		worksHandler:            cfg.WorksHandler,
+		creationCancelHandler:   cfg.CreationCancelHandler,
 		feedbackHandler:         cfg.FeedbackHandler,
 		notificationHandler:     cfg.NotificationHandler,
+		adminHandler:            cfg.AdminHandler,
 		generationStreamHandler: cfg.GenerationStreamHandler,
 	}
 }
@@ -208,6 +249,12 @@ func (g *Gateway) Handler() http.Handler {
 		}
 		if g.generationCallback != nil && matchesGenerationCallback(r) {
 			g.generationCallback.ServeHTTP(w, r)
+			return
+		}
+		if g.providerCallback != nil && matchesProviderCallback(r) {
+			// B2B 终态回调与生成回调同属「已验签的内部入口」，因此只在处理器
+			// 非空时接管；未配置时继续走 Node 代理，不额外造一条本地兜底路径。
+			g.providerCallback.ServeHTTP(w, r)
 			return
 		}
 		if g.generationStreamHandler != nil && r.Method == http.MethodGet && r.URL.Path == generationStreamRoute.path && g.routeSwitch.Enabled(generationStreamRoute) {
@@ -233,11 +280,26 @@ func (g *Gateway) Handler() http.Handler {
 			g.videoHandler.ServeHTTP(w, r)
 			return
 		}
+		if g.videoHandler != nil && matchesLocalHomepageContent(r) {
+			g.videoHandler.ServeHTTP(w, r)
+			return
+		}
 		if route, ok := matchWorksRoute(r); ok {
 			if g.worksHandler != nil && g.routeSwitch.Enabled(route) {
 				// 作品读取一旦由 Go 接管，必须使用同一 Go 会话和自有创作事实；
 				// 开关关闭时继续由 Node 透明处理，避免混用两个作品域。
 				g.worksHandler.ServeHTTP(w, r)
+				return
+			}
+			g.defaultProxy.ServeHTTP(w, r)
+			return
+		}
+		if route, ok := matchCreationCancelRoute(r); ok {
+			if g.creationCancelHandler != nil && g.routeSwitch.Enabled(route) {
+				// Cancellation creates a durable request only. Once Go accepts it,
+				// falling back to Node could enqueue a second provider cancel through
+				// a different account or identity domain.
+				g.creationCancelHandler.ServeHTTP(w, r)
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -263,6 +325,10 @@ func (g *Gateway) Handler() http.Handler {
 			g.defaultProxy.ServeHTTP(w, r)
 			return
 		}
+		if g.adminHandler != nil && strings.HasPrefix(r.URL.Path, "/api/admin/") {
+			g.adminHandler.ServeHTTP(w, r)
+			return
+		}
 		if route, ok := matchFeedbackRoute(r); ok {
 			if g.feedbackHandler != nil && g.routeSwitch.Enabled(route) {
 				g.feedbackHandler.ServeHTTP(w, r)
@@ -283,6 +349,14 @@ func (g *Gateway) Handler() http.Handler {
 			if g.mediaHandler != nil && g.routeSwitch.Enabled(route.routeKey()) {
 				// 上传和读取一旦接管均不得转交 Node，素材 ID、归属校验和存储均属于 Go 自有域。
 				g.mediaHandler.ServeHTTP(w, r)
+				return
+			}
+			g.defaultProxy.ServeHTTP(w, r)
+			return
+		}
+		if route, ok := matchR2MediaRoute(r); ok {
+			if g.r2MediaHandler != nil && g.routeSwitch.Enabled(route) {
+				g.r2MediaHandler.ServeHTTP(w, r)
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -320,6 +394,31 @@ func (g *Gateway) Handler() http.Handler {
 
 		g.defaultProxy.ServeHTTP(w, r)
 	})
+}
+
+func matchR2MediaRoute(request *http.Request) (exactRouteKey, bool) {
+	if request == nil || request.URL == nil || request.URL.EscapedPath() != request.URL.Path {
+		return exactRouteKey{}, false
+	}
+	switch request.URL.Path {
+	case "/api/v1/media/object":
+		if request.Method == http.MethodGet || request.Method == http.MethodHead || request.Method == http.MethodOptions {
+			return r2MediaRoutes[0], true
+		}
+	case "/api/media/image":
+		if request.Method == http.MethodGet {
+			return r2MediaRoutes[1], true
+		}
+	case "/api/media/refresh-download-link":
+		if request.Method == http.MethodPost {
+			return r2MediaRoutes[2], true
+		}
+	case "/media/refresh-download-link":
+		if request.Method == http.MethodPost {
+			return r2MediaRoutes[3], true
+		}
+	}
+	return exactRouteKey{}, false
 }
 
 func matchAuthEntryRoute(request *http.Request) (exactRouteKey, bool) {
@@ -382,13 +481,19 @@ func matchNotificationRoute(request *http.Request) (exactRouteKey, bool) {
 
 func matchesLocalImageTemplateCatalog(request *http.Request) bool {
 	return request != nil && request.URL != nil && request.Method == http.MethodGet &&
-		request.URL.Path == "/api/homepage/image-templates" && request.URL.RawQuery == "" &&
+		request.URL.Path == "/api/homepage/image-templates" &&
 		!request.URL.ForceQuery && request.URL.EscapedPath() == request.URL.Path
 }
 
 func matchesLocalVideoTemplateCatalog(request *http.Request) bool {
 	return request != nil && request.URL != nil && request.Method == http.MethodGet &&
-		request.URL.Path == "/api/homepage/video-templates" && request.URL.RawQuery == "" &&
+		request.URL.Path == "/api/homepage/video-templates" &&
+		!request.URL.ForceQuery && request.URL.EscapedPath() == request.URL.Path
+}
+
+func matchesLocalHomepageContent(request *http.Request) bool {
+	return request != nil && request.URL != nil && request.Method == http.MethodGet &&
+		request.URL.Path == "/api/homepage/content" &&
 		!request.URL.ForceQuery && request.URL.EscapedPath() == request.URL.Path
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"ai-business-service/internal/biz/creations"
 	"ai-business-service/internal/biz/shared"
 )
 
@@ -34,6 +35,24 @@ func TestGenerationGateErrorsUseStableRootEnvelope(t *testing.T) {
 			err:        shared.ErrInsufficientFunds,
 			wantStatus: stdhttp.StatusPaymentRequired,
 			wantCode:   "INSUFFICIENT_FUNDS",
+		},
+		{
+			name:       "生成依赖不可用",
+			err:        creations.ErrAdmissionDependencyUnavailable,
+			wantStatus: stdhttp.StatusServiceUnavailable,
+			wantCode:   "SERVICE_UNAVAILABLE",
+		},
+		{
+			name:       "生成发布配置错误",
+			err:        creations.ErrAdmissionConfigurationUnavailable,
+			wantStatus: stdhttp.StatusServiceUnavailable,
+			wantCode:   "GENERATION_CONFIGURATION_UNAVAILABLE",
+		},
+		{
+			name:       "生成产品配方缺失",
+			err:        creations.ErrB2BProductRecipeUnavailable,
+			wantStatus: stdhttp.StatusServiceUnavailable,
+			wantCode:   "GENERATION_RECIPE_UNAVAILABLE",
 		},
 	}
 

@@ -23,11 +23,12 @@ type Data struct {
 	database *mongo.Database
 }
 
-// NewData 创建并验证独立 cling_main 的 MongoDB 客户端。
-// 连接前复用配置校验，避免独立命令或测试绕过启动入口直连到非本地 MongoDB。
+// NewData 创建并验证按 CLING_MONGO_PROFILE 选择的 MongoDB 客户端。
+// 未设置 profile 时仍严格限制到本地 cling_main；admin projection 仍显式使用
+// NewAdminData 以保留其不初始化 Go-owned schema 的语义。
 func NewData(config *conf.Data) (*Data, func(), error) {
-	if err := conf.ValidateLocalMongo(config); err != nil {
-		return nil, nil, fmt.Errorf("validate local MongoDB config: %w", err)
+	if err := conf.ValidateConfiguredMongo(config); err != nil {
+		return nil, nil, fmt.Errorf("validate configured MongoDB config: %w", err)
 	}
 
 	client, err := mongo.Connect(options.Client().ApplyURI(config.GetMongo().GetUri()))
@@ -78,9 +79,15 @@ var ProviderSet = wire.NewSet(
 	NewLedgerRepository,
 	NewOutboxRepository,
 	NewGenerationSubmissionRepository,
+	NewGenerationProviderInboxRepository,
+	NewGenerationProviderInboxConsumerStore,
 	NewGenerationCallbackRepository,
 	NewGenerationCallbackStore,
 	NewGenerationCallbackLinker,
+	NewGenerationProviderTerminalStore,
+	NewMappingCatalogRepository,
 	NewFeedbackRepository,
 	NewNotificationRepository,
+	NewAdminPricingRepository,
+	NewAdminReviewRepository,
 )

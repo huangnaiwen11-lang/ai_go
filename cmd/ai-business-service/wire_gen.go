@@ -50,21 +50,34 @@ func wireApp(confServer *conf.Server, confData *conf.Data, security *conf.Securi
 	reservationUsecaseAdapter := creations.NewReservationUsecaseAdapter(ledgerUsecase)
 	outboxRepository := data.NewOutboxRepository(dataData)
 	writer := outbox.NewWriter(outboxRepository)
-	creationsUsecase := creations.NewUsecase(userReaderAdapter, subscriptionReader, entitlementEvaluatorAdapter, repository, reservationUsecaseAdapter, writer, txRunner)
+	mappingCatalogStore := data.NewMappingCatalogRepository(dataData)
+	b2BAdmissionStorageReadiness, err := generation.NewB2BAdmissionStorageReadiness(integrations)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	admissionResolver, err := generation.NewAdmissionResolverWithStorageReadiness(integrations, mappingCatalogStore, b2BAdmissionStorageReadiness)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	creationsUsecase := creations.NewUsecase(userReaderAdapter, subscriptionReader, entitlementEvaluatorAdapter, repository, reservationUsecaseAdapter, writer, txRunner, admissionResolver)
 	submissionStore := data.NewGenerationSubmissionRepository(dataData)
-	client, err := generation.NewConfiguredClient(security, integrations)
+	providerRegistry, cleanup2, err := generation.NewProviderRegistry(security, integrations, mappingCatalogStore)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
 	reviewer := contentreview.NewConfiguredReviewer(integrations)
-	generationSubmissionWorker := worker.NewDefaultGenerationSubmissionWorker(outboxRepository, submissionStore, ledgerUsecase, txRunner, client, reviewer)
+	generationSubmissionWorker := worker.NewDefaultGenerationSubmissionWorker(outboxRepository, submissionStore, ledgerUsecase, txRunner, providerRegistry, reviewer)
 	app, err := newApp(logger, grpcServer, httpServer, moduleRegistry, txRunner, localSchemaInitializer, creationsUsecase, generationSubmissionWorker)
 	if err != nil {
+		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
 	return app, func() {
+		cleanup2()
 		cleanup()
 	}, nil
 }

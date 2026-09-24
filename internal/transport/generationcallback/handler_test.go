@@ -283,7 +283,7 @@ func newHandlerMongoFixture(t *testing.T) *handlerMongoFixture {
 	}
 	fixture.creations = creations.NewUsecaseWithClock(
 		data.NewUserRepository(storage), data.NewSubscriptionRepository(storage), entitlement.NewUsecase(),
-		data.NewCreationRepository(storage), ledgerUsecase, fixture.outbox, tx, func() time.Time { return now },
+		data.NewCreationRepository(storage), ledgerUsecase, fixture.outbox, tx, nil, func() time.Time { return now },
 	)
 	t.Cleanup(fixture.deleteTracked)
 	return fixture

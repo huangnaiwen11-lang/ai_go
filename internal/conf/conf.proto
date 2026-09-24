@@ -11,6 +11,8 @@ message Bootstrap {
   Security security = 3;
   Integrations integrations = 4;
   Worker worker = 5;
+  // 空值兼容既有本地配置；显式值仅允许 local / production。
+  string environment = 6;
 }
 
 message Server {
@@ -74,6 +76,33 @@ message Integrations {
     string callback_base_url = 2;
     // 中台租户准入密钥；与请求 HMAC、回调 HMAC 分离，不能写入执行载荷。
     string api_key = 3;
+    // 新步骤准入选择；空值仅兼容 local_execution_v2，不影响历史步骤归属。
+    string provider = 4;
+    // 独立账号与认证；可与上述 local 配置共存以排空历史步骤。
+    PolarStarB2B polarstar_b2b = 5;
+  }
+  message PolarStarB2B {
+    // 稳定账号身份与供应商签名 body 中的租户身份，不能随凭据轮换改变。
+    string account_ref = 1;
+    string tenant_id = 2;
+    string base_url = 3;
+    // 仅通过环境/Secret 注入；不可复用 local API Key 或 HMAC。
+    string api_key = 4;
+    // webhook / lookup_only；后者仅 local 环境且显式禁用回调配置。
+    string delivery_mode = 5;
+    string callback_origin = 6;
+    string callback_secret = 7;
+    // 精确 host 白名单，不支持通配符、端口、URL 或私网地址。
+    repeated string result_host_allowlist = 8;
+    google.protobuf.Duration http_timeout = 9;
+    google.protobuf.Duration connect_timeout = 10;
+    google.protobuf.Duration response_header_timeout = 11;
+    int32 max_connections_per_host = 12;
+    int64 max_response_bytes = 13;
+    int64 max_result_bytes = 14;
+    int32 max_in_flight = 15;
+    // 轮换重叠期内可接受的上一版本回调密钥；为空表示不启用 previous。
+    string callback_previous_secret = 16;
   }
   message Paycores {
     string base_url = 1;

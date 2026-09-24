@@ -23,7 +23,7 @@ func newConfiguredAuthEntryHandler(dataConfig *conf.Data, securityConfig *conf.S
 	if authenticator == nil {
 		return nil, nil, fmt.Errorf("Go session authenticator is required for local auth entry")
 	}
-	if err := conf.ValidateLocalMongo(dataConfig); err != nil {
+	if err := conf.ValidateConfiguredMongo(dataConfig); err != nil {
 		return nil, nil, err
 	}
 	policy, err := authcredential.NewPolicy(authcredential.Params{MemoryKiB: securityConfig.GetPasswordMemoryKib(), TimeCost: securityConfig.GetPasswordTimeCost(), Parallelism: uint8(securityConfig.GetPasswordParallelism()), SaltBytes: securityConfig.GetPasswordSaltBytes(), KeyBytes: securityConfig.GetPasswordKeyBytes()})
@@ -42,6 +42,9 @@ func newConfiguredAuthEntryHandler(dataConfig *conf.Data, securityConfig *conf.S
 	}
 	usecase := identity.NewAuthUsecase(data.NewAuthUserRepository(storage), data.NewIdentityRepository(storage), data.NewAuthSessionRepository(storage), data.NewAccountRepository(storage), data.NewCredentialRepository(storage), policy, data.NewTxRunner(storage))
 	images := bizmedia.NewUsecase(data.NewLocalUserMediaRepository(storage, localMediaDirectory()))
+	if localGoogleEmail := strings.TrimSpace(os.Getenv("GO_LOCAL_GOOGLE_BYPASS_EMAIL")); os.Getenv("GO_LOCAL_GOOGLE_BYPASS_ENABLED") == "1" && localGoogleEmail != "" {
+		return transportauth.NewHandlerWithLocalGoogle(authenticator, usecase, localBindingVerifier(), images, localGoogleEmail), cleanup, nil
+	}
 	return transportauth.NewHandlerWithProfileImages(authenticator, usecase, localBindingVerifier(), images), cleanup, nil
 }
 

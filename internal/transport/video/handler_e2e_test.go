@@ -177,7 +177,7 @@ func TestHandler视频模板I2V审核没收不退款(t *testing.T) {
 
 	client := &videoE2ENeverSubmitClient{}
 	submitter := worker.NewGenerationSubmissionWorker(
-		fixture.outbox, fixture.submissions, fixture.ledger, fixture.tx, client,
+		fixture.outbox, fixture.submissions, fixture.ledger, fixture.tx, worker.LocalClientRouter{Local: client},
 		videoE2ERejectedReviewer{}, "video-e2e-review", func() time.Time { return fixture.now },
 	)
 	if err := submitter.DeliverOnce(fixture.ctx, outbox.SubmissionEventID(steps[0].ID)); err != nil {
@@ -239,7 +239,7 @@ func newVideoE2EFixture(t *testing.T) *videoE2EFixture {
 	now := time.Date(2026, time.September, 8, 12, 0, 0, 0, time.UTC)
 	tx := data.NewTxRunner(storage)
 	ledgerUsecase := ledger.NewUsecaseWithClock(data.NewLedgerRepository(storage), tx, func() time.Time { return now })
-	creationUsecase := creations.NewUsecaseWithClock(data.NewUserRepository(storage), data.NewSubscriptionRepository(storage), entitlement.NewUsecase(), data.NewCreationRepository(storage), ledgerUsecase, data.NewOutboxRepository(storage), tx, func() time.Time { return now })
+	creationUsecase := creations.NewUsecaseWithClock(data.NewUserRepository(storage), data.NewSubscriptionRepository(storage), entitlement.NewUsecase(), data.NewCreationRepository(storage), ledgerUsecase, data.NewOutboxRepository(storage), tx, nil, func() time.Time { return now })
 	identityUsecase := identity.NewUsecase(data.NewUserRepository(storage), data.NewIdentityRepository(storage), data.NewSessionRepository(storage), tx)
 	callbackStore := data.NewGenerationCallbackRepository(storage)
 	callbackUsecase := bizgeneration.NewCallbackUsecaseWithClock(callbackStore, callbackStore, ledgerUsecase, tx, func() time.Time { return now })

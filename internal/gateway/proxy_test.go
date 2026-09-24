@@ -200,6 +200,21 @@ func TestHandlerFallsBackForPathsOutsideConfirmedExactRoutes(t *testing.T) {
 	}
 }
 
+func TestHandler将管理路径交给本地管理处理器而非旧上游(t *testing.T) {
+	local := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/admin/analytics/overview" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		writer.WriteHeader(http.StatusNoContent)
+	})
+	gateway := New(Config{DefaultUpstream: mustURL(t, "http://node.invalid"), AdminHandler: local})
+	recorder := httptest.NewRecorder()
+	gateway.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/admin/analytics/overview", nil))
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusNoContent)
+	}
+}
+
 // TestAuthEntryUsesOnlyExactEnabledRoute 防止 OAuth、编码路径和带查询参数的认证请求被
 // 意外接管；这些请求必须继续保持 Node 的既有语义。
 func TestAuthEntryUsesOnlyExactEnabledRoute(t *testing.T) {

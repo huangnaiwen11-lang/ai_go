@@ -15,18 +15,25 @@ import (
 	bizvideo "ai-business-service/internal/biz/video"
 	"ai-business-service/internal/conf"
 	"ai-business-service/internal/data"
+	platform "ai-business-service/internal/integrations/generation"
 	"ai-business-service/internal/transport/sessionauth"
 	transportvideo "ai-business-service/internal/transport/video"
 )
 
 // newConfiguredPublicVideoHandler 装配独立本地 MongoDB 上的模板视频业务依赖。
 // 它只写创作、预扣与 Outbox，不启动 Worker，也不请求真实生成中台。
-func newConfiguredPublicVideoHandler(dataConfig *conf.Data, authenticator *sessionauth.Authenticator) (http.Handler, func(), error) {
+// 归属解析器按 generation 选择器构造：选择 B2B 却没有可用账号或目录时直接失败，
+// 不允许新步骤被静默冻成本地。
+func newConfiguredPublicVideoHandler(dataConfig *conf.Data, integrations *conf.Integrations, authenticator *sessionauth.Authenticator) (http.Handler, func(), error) {
 	if authenticator == nil {
 		return nil, nil, errors.New("Go session authenticator is required for public video")
 	}
-	if err := conf.ValidateLocalMongo(dataConfig); err != nil {
+	if err := conf.ValidateConfiguredMongo(dataConfig); err != nil {
 		return nil, nil, err
+	}
+	storageReadiness, err := platform.NewB2BAdmissionStorageReadiness(integrations)
+	if err != nil {
+		return nil, nil, fmt.Errorf("configure B2B result storage admission gate: %w", err)
 	}
 	storage, cleanup, err := data.NewData(dataConfig)
 	if err != nil {
@@ -38,6 +45,10 @@ func newConfiguredPublicVideoHandler(dataConfig *conf.Data, authenticator *sessi
 	if err := data.NewLocalSchemaInitializer(storage).Ensure(ctx); err != nil {
 		return fail(fmt.Errorf("initialize local MongoDB schema: %w", err))
 	}
+	admissions, err := platform.NewAdmissionResolverWithStorageReadiness(integrations, data.NewMappingCatalogRepository(storage), storageReadiness)
+	if err != nil {
+		return fail(fmt.Errorf("configure generation admission: %w", err))
+	}
 	tx := data.NewTxRunner(storage)
 	ledgerUsecase := ledger.NewUsecase(data.NewLedgerRepository(storage), tx)
 	creationUsecase := creations.NewUsecase(
@@ -48,10 +59,18 @@ func newConfiguredPublicVideoHandler(dataConfig *conf.Data, authenticator *sessi
 		creations.NewReservationUsecaseAdapter(ledgerUsecase),
 		data.NewOutboxRepository(storage),
 		tx,
+		admissions,
 	)
 	// 与 I2I 复用同一份 Go 自有素材仓储：I2V 不能把任意外链直接编译进生成快照。
 	userMedia := bizmedia.NewUsecase(data.NewLocalUserMediaRepository(storage, localMediaDirectory()))
-	creator := bizvideo.NewUsecase(data.NewVideoTemplateRepository(storage), creationUsecase, userMedia)
+	videoRecipes := data.NewVideoTemplateRepository(storage)
+	creator := bizvideo.NewUsecase(videoRecipes, creationUsecase, userMedia)
+	if usesB2BProductRecipes(integrations) {
+		// B2B text-to-video uses two separately published products. Its second
+		// image-to-video product remains unbound here and is activated only by
+		// the R2 materializer; this constructor never falls back to execution.v2.
+		creator = bizvideo.NewUsecaseWithB2BProductRecipes(videoRecipes, data.NewB2BProductRecipeRepository(storage), creationUsecase, userMedia)
+	}
 	statuses := bizvideo.NewStatusUsecase(data.NewVideoStatusRepository(storage))
 	return newLocalVideoTemplateCatalogHandler(authenticator, catalog.NewUsecase(data.NewTemplateRepository(storage)), transportvideo.NewHandler(authenticator, creator, statuses)), cleanup, nil
 }
@@ -66,5 +85,5 @@ func newOptionalPublicVideoHandler(enabled bool, configPath string, authenticato
 	if bootstrap == nil {
 		return nil, nil, nil
 	}
-	return newConfiguredPublicVideoHandler(bootstrap.GetData(), authenticator)
+	return newConfiguredPublicVideoHandler(bootstrap.GetData(), bootstrap.GetIntegrations(), authenticator)
 }

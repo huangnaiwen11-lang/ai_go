@@ -27,6 +27,7 @@ type sessionValidator interface {
 type AuthenticatedIdentity struct {
 	UserID        string
 	ContentAccess string
+	Role          string
 }
 
 // Authenticator 仅从 Authorization Bearer Header 中提取并验证 Go 会话 ID。
@@ -71,7 +72,7 @@ func (authenticator *Authenticator) Authenticate(request *http.Request) (*Authen
 	if session == nil || strings.TrimSpace(session.UserID) == "" {
 		return nil, shared.ErrUnauthenticated
 	}
-	return &AuthenticatedIdentity{UserID: session.UserID, ContentAccess: session.ContentAccess}, nil
+	return &AuthenticatedIdentity{UserID: session.UserID, ContentAccess: session.ContentAccess, Role: session.Role}, nil
 }
 
 // bearerSessionID 只接受一个、格式严格的 Bearer 值，避免重复 Header 或多种来源

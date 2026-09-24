@@ -19,7 +19,7 @@ func newConfiguredWorksViewHandler(dataConfig *conf.Data, authenticator *session
 	if authenticator == nil {
 		return nil, nil, fmt.Errorf("Go session authenticator is required for works view")
 	}
-	if err := conf.ValidateLocalMongo(dataConfig); err != nil {
+	if err := conf.ValidateConfiguredMongo(dataConfig); err != nil {
 		return nil, nil, err
 	}
 	storage, cleanup, err := data.NewData(dataConfig)

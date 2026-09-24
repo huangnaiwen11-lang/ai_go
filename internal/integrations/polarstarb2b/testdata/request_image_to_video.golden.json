@@ -1,0 +1,1 @@
+{"externalId":"step-1","idempotencyKey":"cling-step:step-1","capability":"image_to_video","model":"ps-rush-v1","input":{"prompt":"浪花轻轻拍岸","imageUrl":"https://assets.example.com/frame.png","durationSeconds":5,"aspectRatio":"9:16"},"callbackUrl":"https://callbacks.example.com/polarstar","callbackPolicy":"bounded","resultUrlPolicy":"permanent"}

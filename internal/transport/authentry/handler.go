@@ -24,6 +24,7 @@ const (
 	profilePath       = "/api/auth/me/profile"
 	sessionsPath      = "/api/auth/me/sessions"
 	passwordPath      = "/api/auth/me/password"
+	localGooglePath   = "/api/auth/local-google"
 	deleteAccountPath = "/api/auth/me"
 	maxRequestBytes   = 64 << 10
 )
@@ -40,6 +41,10 @@ type entryUsecase interface {
 	BindGuest(context.Context, identity.BindGuestInput) (*identity.User, error)
 }
 
+type localDevelopmentLoginUsecase interface {
+	LoginLocalDevelopment(context.Context, identity.LocalDevelopmentLoginInput) (*identity.LoginResult, error)
+}
+
 // bindingVerifier 负责把外部登录/验证凭据兑换成已验证的 provider + subject。
 // HTTP 层绝不直接信任浏览器提交的 subject，具体实现由 OAuth 或短信验证适配器提供。
 type bindingVerifier interface {
@@ -53,6 +58,13 @@ type handler struct {
 	profileImages interface {
 		OpenOwnedImage(context.Context, string, string) (*bizmedia.Image, []byte, error)
 	}
+	localGoogle *localGoogleConfig
+}
+
+type localGoogleConfig struct {
+	email       string
+	timezone    string
+	displayName string
 }
 
 type profileUsecase interface {
@@ -88,6 +100,20 @@ func NewHandlerWithProfileImages(authenticator sessionAuthenticator, usecase ent
 	return &handler{authenticator: authenticator, usecase: usecase, verifier: verifier, profileImages: images}
 }
 
+// NewHandlerWithLocalGoogle 开启仅用于本地 Docker 联调的固定账号入口。配置由服务端
+// 注入，浏览器请求不包含用户邮箱、密码或 OAuth token。
+func NewHandlerWithLocalGoogle(authenticator sessionAuthenticator, usecase entryUsecase, verifier bindingVerifier, images interface {
+	OpenOwnedImage(context.Context, string, string) (*bizmedia.Image, []byte, error)
+}, email string) http.Handler {
+	return &handler{
+		authenticator: authenticator,
+		usecase:       usecase,
+		verifier:      verifier,
+		profileImages: images,
+		localGoogle:   &localGoogleConfig{email: strings.TrimSpace(email), timezone: "Asia/Shanghai", displayName: "winjayzwj"},
+	}
+}
+
 // ServeHTTP 仅处理四条精确账号路由。Gateway 接管后不允许重放 Node，避免注册或登录
 // 在两个用户域产生不一致状态。
 func (handler *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -100,6 +126,8 @@ func (handler *handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		handler.register(writer, request)
 	case request.Method == http.MethodPost && request.URL.Path == loginPath:
 		handler.login(writer, request)
+	case request.Method == http.MethodPost && request.URL.Path == localGooglePath:
+		handler.localGoogleLogin(writer, request)
 	case request.Method == http.MethodPost && request.URL.Path == guestPath:
 		handler.guest(writer, request)
 	case request.Method == http.MethodPost && request.URL.Path == bindPath:
@@ -117,6 +145,28 @@ func (handler *handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	default:
 		writeClientError(writer, http.StatusNotFound, "NOT_FOUND", "Not found")
 	}
+}
+
+func (handler *handler) localGoogleLogin(writer http.ResponseWriter, request *http.Request) {
+	if handler.localGoogle == nil || strings.TrimSpace(handler.localGoogle.email) == "" || requestBodyHasData(request) {
+		writeClientError(writer, http.StatusNotFound, "NOT_FOUND", "Not found")
+		return
+	}
+	usecase, ok := handler.usecase.(localDevelopmentLoginUsecase)
+	if !ok {
+		writeError(writer, shared.ErrServiceUnavailable)
+		return
+	}
+	result, err := usecase.LoginLocalDevelopment(request.Context(), identity.LocalDevelopmentLoginInput{
+		Email:       handler.localGoogle.email,
+		Timezone:    handler.localGoogle.timezone,
+		DisplayName: handler.localGoogle.displayName,
+	})
+	if err != nil {
+		writeError(writer, err)
+		return
+	}
+	writeLoginSuccess(writer, http.StatusOK, result)
 }
 
 // deleteAccount 只作用于当前会话用户。领域层会以事务写入 deleted 状态并撤销全部会话，
@@ -407,7 +457,7 @@ func safeUser(user *identity.User) map[string]any {
 	if user == nil {
 		return nil
 	}
-	return map[string]any{"id": user.ID, "displayName": user.DisplayName, "bio": user.Bio, "avatarImageId": user.AvatarImageID, "bindingState": user.BindingState, "accountStatus": user.AccountStatus, "contentAccess": user.ContentAccess, "timezone": user.Timezone, "isGuest": user.BindingState == identity.BindingStateGuest}
+	return map[string]any{"id": user.ID, "displayName": user.DisplayName, "bio": user.Bio, "avatarImageId": user.AvatarImageID, "bindingState": user.BindingState, "accountStatus": user.AccountStatus, "contentAccess": user.ContentAccess, "role": user.Role, "timezone": user.Timezone, "isGuest": user.BindingState == identity.BindingStateGuest}
 }
 
 func writeSuccess(writer http.ResponseWriter, status int, data any) {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -115,6 +116,59 @@ func TestNewOptionalPaymentEntry默认不读取配置且显式开启才读取(t 
 	handler, cleanup, err = newOptionalPaymentEntryHandler(true, "/private/tmp/missing-gateway-config.yaml", nil)
 	if err == nil || handler != nil || cleanup != nil {
 		t.Fatalf("开启且配置缺失时 handlerPresent=%t cleanupPresent=%t error=%v，期望初始化失败", handler != nil, cleanup != nil, err)
+	}
+}
+
+func TestApplyPayCoresEnvironmentOverrides生产凭据不落盘(t *testing.T) {
+	t.Setenv("PAYCORES_BASE_URL", "https://paycores.example.com")
+	t.Setenv("PAYCORES_RETURN_URL", "https://app.example.com/payment/success")
+	t.Setenv("PAYCORES_CANCEL_URL", "https://app.example.com/payment/cancel")
+	t.Setenv("PAYCORES_REQUEST_HMAC_KEY", "request-production-key-from-secret-manager")
+	t.Setenv("PAYCORES_CALLBACK_HMAC_KEY", "callback-production-key-from-secret-manager")
+	bootstrap, err := loadGatewayBootstrap("../../configs/config.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := bootstrap.GetIntegrations().GetPaycores().GetBaseUrl(); got != "https://paycores.example.com" {
+		t.Fatalf("base URL = %q", got)
+	}
+	if got := bootstrap.GetSecurity().GetPaycoresRequestHmacKey(); got != "request-production-key-from-secret-manager" {
+		t.Fatalf("request key = %q", got)
+	}
+}
+
+func TestApplyPolarStarB2BCallbackSecretEnvironmentOverrides只覆盖密钥字段(t *testing.T) {
+	t.Setenv("POLARSTAR_B2B_CALLBACK_SECRET", "active-from-secret-manager")
+	t.Setenv("POLARSTAR_B2B_CALLBACK_PREVIOUS_SECRET", "previous-from-secret-manager")
+	bootstrap := &conf.Bootstrap{Integrations: &conf.Integrations{Generation: &conf.Integrations_Generation{
+		ApiKey: "local-generation-api-key",
+		PolarstarB2B: &conf.Integrations_PolarStarB2B{
+			AccountRef: "account-from-file", TenantId: "tenant-from-file", CallbackOrigin: "https://callback.example.com",
+			CallbackSecret: "active-from-file", CallbackPreviousSecret: "previous-from-file",
+		},
+	}}}
+
+	applyPolarStarB2BEnvironmentOverrides(bootstrap)
+	b := bootstrap.GetIntegrations().GetGeneration().GetPolarstarB2B()
+	if b.GetCallbackSecret() != "active-from-secret-manager" || b.GetCallbackPreviousSecret() != "previous-from-secret-manager" {
+		t.Fatalf("callback secrets = (%q, %q), want environment values", b.GetCallbackSecret(), b.GetCallbackPreviousSecret())
+	}
+	if b.GetAccountRef() != "account-from-file" || b.GetTenantId() != "tenant-from-file" || b.GetCallbackOrigin() != "https://callback.example.com" {
+		t.Fatalf("non-secret B2B fields changed: account=%q tenant=%q origin=%q", b.GetAccountRef(), b.GetTenantId(), b.GetCallbackOrigin())
+	}
+}
+
+func TestApplyPolarStarB2BCallbackSecretEnvironmentOverrides空值保留文件配置(t *testing.T) {
+	t.Setenv("POLARSTAR_B2B_CALLBACK_SECRET", "")
+	t.Setenv("POLARSTAR_B2B_CALLBACK_PREVIOUS_SECRET", "")
+	bootstrap := &conf.Bootstrap{Integrations: &conf.Integrations{Generation: &conf.Integrations_Generation{
+		PolarstarB2B: &conf.Integrations_PolarStarB2B{CallbackSecret: "active-from-file", CallbackPreviousSecret: "previous-from-file"},
+	}}}
+
+	applyPolarStarB2BEnvironmentOverrides(bootstrap)
+	b := bootstrap.GetIntegrations().GetGeneration().GetPolarstarB2B()
+	if b.GetCallbackSecret() != "active-from-file" || b.GetCallbackPreviousSecret() != "previous-from-file" {
+		t.Fatalf("empty environment erased file secrets: (%q, %q)", b.GetCallbackSecret(), b.GetCallbackPreviousSecret())
 	}
 }
 
@@ -356,6 +410,21 @@ func TestLoadGatewayBootstrap拒绝缺失配置文件(t *testing.T) {
 	}
 }
 
+func TestLoadGatewayBootstrapUsesExplicitStagingMongoProfile(t *testing.T) {
+	t.Setenv("CLING_MONGO_PROFILE", "staging")
+	t.Setenv("CLING_MONGO_URI", "mongodb://staging-user:staging-pass@host.docker.internal:27019/ai-host-v2-staging?authSource=admin&directConnection=true")
+	t.Setenv("CLING_MONGO_DATABASE", "ai-host-v2-staging")
+
+	bootstrap, err := loadGatewayBootstrap("../../../deploy/config.gateway.yaml")
+	if err != nil {
+		t.Fatalf("loadGatewayBootstrap() error = %v", err)
+	}
+	mongo := bootstrap.GetData().GetMongo()
+	if mongo.GetUri() != os.Getenv("CLING_MONGO_URI") || mongo.GetDatabase() != "ai-host-v2-staging" || mongo.GetReplicaSet() != "" {
+		t.Fatalf("gateway staging Mongo config = %+v", mongo)
+	}
+}
+
 func TestRejectsDeprecatedPrefixUpstreams(t *testing.T) {
 	if err := rejectDeprecatedPrefixUpstreams("/api/homepage=http://127.0.0.1:8081"); err == nil {
 		t.Fatal("rejectDeprecatedPrefixUpstreams accepted deprecated prefix configuration")
@@ -394,5 +463,23 @@ func TestParseOptionalAdmissionTimeout(t *testing.T) {
 				t.Fatalf("parseOptionalAdmissionTimeout() = %s, want %s", got, testCase.want)
 			}
 		})
+	}
+}
+
+func TestValidateProductionPayCoresEnvironment(t *testing.T) {
+	keys := []string{"PAYCORES_BASE_URL", "PAYCORES_RETURN_URL", "PAYCORES_CANCEL_URL", "PAYCORES_REQUEST_HMAC_KEY", "PAYCORES_CALLBACK_HMAC_KEY"}
+	for _, key := range keys {
+		t.Setenv(key, "")
+	}
+	if err := validateProductionPayCoresEnvironment(); err == nil {
+		t.Fatal("missing production PayCores environment must fail closed")
+	}
+	t.Setenv("PAYCORES_BASE_URL", "https://paycores.example.test")
+	t.Setenv("PAYCORES_RETURN_URL", "https://cling.example.test/payment/success")
+	t.Setenv("PAYCORES_CANCEL_URL", "https://cling.example.test/payment/cancel")
+	t.Setenv("PAYCORES_REQUEST_HMAC_KEY", "12345678901234567890123456789012")
+	t.Setenv("PAYCORES_CALLBACK_HMAC_KEY", "abcdefghijklmnopqrstuvwxyz123456")
+	if err := validateProductionPayCoresEnvironment(); err != nil {
+		t.Fatalf("valid production PayCores environment rejected: %v", err)
 	}
 }

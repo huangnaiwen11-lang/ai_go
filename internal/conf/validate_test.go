@@ -130,6 +130,143 @@ func TestValidateLocalMongoRejectsUnsafeURIComponents(t *testing.T) {
 	}
 }
 
+func TestValidateStagingMongoAcceptsSSHForwardedConnection(t *testing.T) {
+	cfg := testConfig(
+		"mongodb://staging-user:staging-pass@host.docker.internal:27019/ai-host-v2-staging?authSource=admin&directConnection=true",
+		"ai-host-v2-staging",
+	)
+	cfg.Data.Mongo.ReplicaSet = ""
+	cfg.Data.Mongo.TransactionsRequired = true
+
+	if err := ValidateStagingMongo(cfg.GetData()); err != nil {
+		t.Fatalf("ValidateStagingMongo() error = %v", err)
+	}
+}
+
+func TestValidateStagingMongoRejectsUnsafeConnection(t *testing.T) {
+	cases := []struct {
+		name      string
+		uri       string
+		database  string
+		wantError string
+	}{
+		{
+			name:      "公网主机",
+			uri:       "mongodb://staging-user:staging-pass@mongo.example.test:27019/ai-host-v2-staging?authSource=admin&directConnection=true",
+			database:  "ai-host-v2-staging",
+			wantError: "mongo host",
+		},
+		{
+			name:      "错误数据库",
+			uri:       "mongodb://staging-user:staging-pass@host.docker.internal:27019/other?authSource=admin&directConnection=true",
+			database:  "other",
+			wantError: "mongo database",
+		},
+		{
+			name:      "关闭事务",
+			uri:       "mongodb://staging-user:staging-pass@host.docker.internal:27019/ai-host-v2-staging?authSource=admin&directConnection=true",
+			database:  "ai-host-v2-staging",
+			wantError: "transactions",
+		},
+		{
+			name:      "错误连接模式",
+			uri:       "mongodb://staging-user:staging-pass@host.docker.internal:27019/ai-host-v2-staging?authSource=admin&replicaSet=rs0",
+			database:  "ai-host-v2-staging",
+			wantError: "directConnection",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := testConfig(tc.uri, tc.database)
+			cfg.Data.Mongo.ReplicaSet = ""
+			cfg.Data.Mongo.TransactionsRequired = tc.wantError != "transactions"
+
+			err := ValidateStagingMongo(cfg.GetData())
+			if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+				t.Fatalf("ValidateStagingMongo() error = %v, want %q", err, tc.wantError)
+			}
+		})
+	}
+}
+
+func TestValidateConfiguredMongoDefaultsToLocal(t *testing.T) {
+	t.Setenv("CLING_MONGO_PROFILE", "")
+	cfg := testConfig("mongodb://127.0.0.1:27017/?replicaSet=rs0", "cling_main")
+
+	if err := ValidateConfiguredMongo(cfg.GetData()); err != nil {
+		t.Fatalf("ValidateConfiguredMongo() error = %v", err)
+	}
+}
+
+func TestValidateConfiguredMongoUsesExplicitStagingProfile(t *testing.T) {
+	t.Setenv("CLING_MONGO_PROFILE", "staging")
+	cfg := testConfig(
+		"mongodb://staging-user:staging-pass@host.docker.internal:27019/ai-host-v2-staging?authSource=admin&directConnection=true",
+		"ai-host-v2-staging",
+	)
+	cfg.Data.Mongo.ReplicaSet = ""
+	cfg.Data.Mongo.TransactionsRequired = true
+
+	if err := ValidateConfiguredMongo(cfg.GetData()); err != nil {
+		t.Fatalf("ValidateConfiguredMongo() error = %v", err)
+	}
+}
+
+func TestValidateUsesConfiguredStagingProfile(t *testing.T) {
+	t.Setenv("CLING_MONGO_PROFILE", MongoProfileStaging)
+	cfg := testConfig(
+		"mongodb://staging-user:staging-pass@host.docker.internal:27019/ai-host-v2-staging?authSource=admin&directConnection=true",
+		"ai-host-v2-staging",
+	)
+	cfg.Data.Mongo.ReplicaSet = ""
+
+	if err := Validate(cfg); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
+func TestValidateConfiguredMongoRejectsUnknownProfile(t *testing.T) {
+	t.Setenv("CLING_MONGO_PROFILE", "production")
+	cfg := testConfig("mongodb://127.0.0.1:27017/?replicaSet=rs0", "cling_main")
+
+	err := ValidateConfiguredMongo(cfg.GetData())
+	if err == nil || !strings.Contains(err.Error(), "unknown MongoDB profile") {
+		t.Fatalf("ValidateConfiguredMongo() error = %v, want unknown profile error", err)
+	}
+}
+
+func TestApplyMongoEnvironmentOverridesConfiguresStaging(t *testing.T) {
+	cfg := testConfig("mongodb://127.0.0.1:27017/?replicaSet=rs0", "cling_main")
+	values := map[string]string{
+		"CLING_MONGO_PROFILE":  "staging",
+		"CLING_MONGO_URI":      "mongodb://staging-user:staging-pass@host.docker.internal:27019/ai-host-v2-staging?authSource=admin&directConnection=true",
+		"CLING_MONGO_DATABASE": "ai-host-v2-staging",
+	}
+
+	if err := ApplyMongoEnvironmentOverrides(cfg, func(name string) string { return values[name] }); err != nil {
+		t.Fatalf("ApplyMongoEnvironmentOverrides() error = %v", err)
+	}
+
+	mongo := cfg.GetData().GetMongo()
+	if mongo.GetUri() != values["CLING_MONGO_URI"] || mongo.GetDatabase() != values["CLING_MONGO_DATABASE"] || mongo.GetReplicaSet() != "" || !mongo.GetTransactionsRequired() || mongo.GetDockerLocalProfile() {
+		t.Fatalf("staging Mongo override = %+v", mongo)
+	}
+}
+
+func TestApplyMongoEnvironmentOverridesRequiresStagingURI(t *testing.T) {
+	cfg := testConfig("mongodb://127.0.0.1:27017/?replicaSet=rs0", "cling_main")
+	err := ApplyMongoEnvironmentOverrides(cfg, func(name string) string {
+		if name == "CLING_MONGO_PROFILE" {
+			return "staging"
+		}
+		return ""
+	})
+	if err == nil || !strings.Contains(err.Error(), "CLING_MONGO_URI") {
+		t.Fatalf("ApplyMongoEnvironmentOverrides() error = %v, want missing URI", err)
+	}
+}
+
 func TestValidateRequiresOwnCallbackBaseURL(t *testing.T) {
 	cfg := testConfig("mongodb://127.0.0.1:27017/?replicaSet=rs0", "cling_main")
 	cfg.Integrations.Generation.CallbackBaseUrl = ""

@@ -214,17 +214,39 @@ func (repository *mongoLedgerRepository) TransitionReservation(ctx context.Conte
 	if businessAt.IsZero() {
 		return false, fmt.Errorf("business time is required to transition reservation for creation %q", creationID)
 	}
-	result, err := repository.reservations.UpdateOne(
-		ctx,
-		bson.D{
-			{Key: "creation_id", Value: creationID},
-			{Key: "status", Value: string(from)},
-		},
-		bson.D{{Key: "$set", Value: bson.D{
-			{Key: "status", Value: string(to)},
-			{Key: "updated_at", Value: businessAt.UTC()},
-		}}},
-	)
+	filter := bson.D{
+		{Key: "creation_id", Value: creationID},
+		{Key: "status", Value: string(from)},
+	}
+	setFields := bson.D{
+		{Key: "status", Value: string(to)},
+		{Key: "updated_at", Value: businessAt.UTC()},
+	}
+	update := bson.D{{Key: "$set", Value: setFields}}
+	// A result publication changes neither the monetary reservation status nor
+	// its amount, so status-only CAS would still let a later refund win. For a
+	// reserved generation, the same document is the single arbitration point:
+	// only an absent/open gate can move to refund or confiscation; a published
+	// gate is final and must leave the charge intact.
+	if from == ledger.ReservationStatusReserved {
+		filter = append(filter, bson.E{Key: "$or", Value: bson.A{
+			bson.M{"publication_state": bson.M{"$exists": false}},
+			bson.M{"publication_state": "open"},
+		}})
+		publicationState := ""
+		switch to {
+		case ledger.ReservationStatusReversed:
+			publicationState = "reversed"
+		case ledger.ReservationStatusConfiscated:
+			publicationState = "confiscated"
+		}
+		if publicationState != "" {
+			setFields = append(setFields, bson.E{Key: "publication_state", Value: publicationState})
+			update[0].Value = setFields
+			update = append(update, bson.E{Key: "$inc", Value: bson.D{{Key: "publication_version", Value: int64(1)}}})
+		}
+	}
+	result, err := repository.reservations.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return false, fmt.Errorf("transition reservation for creation %q: %w", creationID, err)
 	}

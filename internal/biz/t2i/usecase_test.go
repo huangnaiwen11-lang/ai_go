@@ -58,6 +58,50 @@ func TestUsecase模板读取失败不调用预留(t *testing.T) {
 	}
 }
 
+// B2B 选择器启用后仍以旧可见模板版本作为产品配方地址，但不得把旧 ModelSKU
+// 或 execution.v2 参数带入公开合同；提交给 creations 的只能是审核过的产品配方。
+func TestUsecase按发布B2B产品配方创建自由文生图(t *testing.T) {
+	creator := &recordingReservedCreator{result: &creations.CreateReservedResult{}}
+	products := &recordingB2BProductRecipeReader{recipe: creations.PublishedB2BProductRecipe{
+		TemplateID: "t2i-freeform", TemplateVersion: 1, Atom: creations.AtomTextToImage,
+		ProductKey: "image-standard", Input: json.RawMessage(`{"prompt":"base","negativePrompt":"base","aspectRatio":"1:1"}`),
+		AllowedUserInputs: []string{"prompt", "negativePrompt", "aspectRatio"},
+	}}
+	usecase := NewUsecaseWithB2BProductRecipes(staticFreeformRecipeReader{recipe: validFreeformRecipe()}, products, creator)
+
+	_, err := usecase.Create(context.Background(), CreateCommand{
+		UserID: "user-1", IdempotencyKey: "gateway:t2i:b2b-request", Prompt: "studio portrait", NegativePrompt: "blur", AspectRatio: "16:9",
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if products.templateID != "t2i-freeform" || products.version != 1 || products.atom != creations.AtomTextToImage {
+		t.Fatalf("published product recipe lookup = %#v", products)
+	}
+	request := creator.request
+	if request.InitialSubmission != nil || request.B2BSubmission == nil || request.B2BSubmission.ProductKey != "image-standard" {
+		t.Fatalf("B2B 创建命令 = %#v", request)
+	}
+	if string(request.B2BSubmission.Input) != `{"aspectRatio":"16:9","negativePrompt":"blur","prompt":"studio portrait"}` || len(request.InputDigest) != 64 {
+		t.Fatalf("B2B 冻结配方 = %#v", request.B2BSubmission)
+	}
+}
+
+func TestUsecase拒绝不匹配当前模板版本的B2B产品配方(t *testing.T) {
+	creator := &recordingReservedCreator{}
+	products := &recordingB2BProductRecipeReader{recipe: creations.PublishedB2BProductRecipe{
+		TemplateID: "other-template", TemplateVersion: 1, Atom: creations.AtomTextToImage,
+		ProductKey: "image-standard", Input: json.RawMessage(`{"prompt":"base"}`), AllowedUserInputs: []string{"prompt"},
+	}}
+	usecase := NewUsecaseWithB2BProductRecipes(staticFreeformRecipeReader{recipe: validFreeformRecipe()}, products, creator)
+	if _, err := usecase.Create(context.Background(), CreateCommand{UserID: "user-1", IdempotencyKey: "gateway:t2i:bad-product", Prompt: "portrait"}); !errors.Is(err, creations.ErrB2BProductRecipeUnavailable) {
+		t.Fatalf("Create() error = %v, want ErrB2BProductRecipeUnavailable", err)
+	}
+	if creator.called {
+		t.Fatal("不匹配配方仍进入预留")
+	}
+}
+
 // 用户上传的图片必须先由自有素材域确认归属。模板编辑不能接受任意外链，
 // 否则用户可能借此使用其他账户的私有图片，或绕过内容与存储治理。
 func TestImageEditUsecase只使用当前用户已确认的素材(t *testing.T) {
@@ -100,9 +144,52 @@ func TestImageEditUsecase素材不属于当前用户时不预扣(t *testing.T) {
 	}
 }
 
+// B2B 图编辑继续使用 Go 素材域做归属检查，但配方、固定参考图与 prompt 组合
+// 都来自发布产品记录；旧 execution.v2 的 ModelSKU/参数不会进入公开载荷。
+func TestImageEditUsecase按发布B2B产品配方创建(t *testing.T) {
+	creator := &recordingReservedCreator{result: &creations.CreateReservedResult{}}
+	products := &recordingB2BProductRecipeReader{recipe: creations.PublishedB2BProductRecipe{
+		TemplateID: "dress-up", TemplateVersion: 1, Atom: creations.AtomImageEdit,
+		ProductKey: "edit-standard", Input: json.RawMessage(`{"prompt":"editorial fashion","aspectRatio":"1:1"}`),
+		AllowedUserInputs: []string{"prompt", "aspectRatio"}, PromptUserInputMode: creations.PromptUserInputModeAppend,
+	}}
+	media := &recordingOwnedImageReader{resolvedURL: "https://assets.example.com/user-source.png"}
+	usecase := NewImageEditUsecaseWithB2BProductRecipes(staticImageEditRecipeReader{recipe: validImageEditRecipe()}, products, creator, media)
+	_, err := usecase.Create(context.Background(), ImageEditCommand{
+		UserID: "user-1", ContentAccess: "standard", IdempotencyKey: "gateway:i2i:b2b-request", TemplateID: "dress-up",
+		UserImageURL: "media-1", UserPrompt: "red evening dress", AspectRatio: "9:16",
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	request := creator.request
+	if request.InitialSubmission != nil || request.B2BSubmission == nil || request.B2BSubmission.ProductKey != "edit-standard" {
+		t.Fatalf("B2B 图编辑创建命令 = %#v", request)
+	}
+	if string(request.B2BSubmission.Input) != `{"aspectRatio":"9:16","prompt":"editorial fashion，red evening dress"}` {
+		t.Fatalf("冻结产品输入 = %s", request.B2BSubmission.Input)
+	}
+	if len(request.B2BSubmission.Assets) != 1 || request.B2BSubmission.Assets[0] != (creations.B2BAsset{Role: "source_image", URL: "https://assets.example.com/user-source.png"}) {
+		t.Fatalf("冻结产品素材 = %#v", request.B2BSubmission.Assets)
+	}
+}
+
 type staticFreeformRecipeReader struct {
 	recipe FreeformRecipe
 	err    error
+}
+
+type recordingB2BProductRecipeReader struct {
+	templateID string
+	version    int64
+	atom       creations.StepAtom
+	recipe     creations.PublishedB2BProductRecipe
+	err        error
+}
+
+func (reader *recordingB2BProductRecipeReader) LoadB2BProductRecipe(_ context.Context, templateID string, version int64, atom creations.StepAtom) (creations.PublishedB2BProductRecipe, error) {
+	reader.templateID, reader.version, reader.atom = templateID, version, atom
+	return reader.recipe, reader.err
 }
 
 func (reader staticFreeformRecipeReader) LoadFreeformRecipe(context.Context) (FreeformRecipe, error) {

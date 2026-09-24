@@ -40,9 +40,11 @@ type User struct {
 	// Bio 是用户主动填写的公开简介，最大 200 个字符。
 	Bio string
 	// AvatarImageID 仅保存当前用户拥有的 Go 素材 ID，不保存外部 URL。
-	AvatarImageID  string
-	AccountStatus  AccountStatus
-	BindingState   BindingState
+	AvatarImageID string
+	AccountStatus AccountStatus
+	BindingState  BindingState
+	// Role 是受信任管理员流程授予的后台访问角色，公开注册路径不能设置它。
+	Role           string
 	Timezone       string
 	GuestPlatform  string
 	GuestDeviceID  string
@@ -70,8 +72,11 @@ type Session struct {
 	SessionVersion int64
 	// ContentAccess 是会话校验时从已验证用户读取的运行时内容访问级别，不持久化到 sessions。
 	ContentAccess string
-	RevokedAt     *time.Time
-	ExpiresAt     time.Time
+	// Role 与 ContentAccess 一样来自同一次受信任的用户读取；它不持久化在 session，
+	// 避免管理员权限变更后仍由旧会话缓存继续生效。
+	Role      string
+	RevokedAt *time.Time
+	ExpiresAt time.Time
 }
 
 // BindGuestInput 是游客绑定已有用户的输入。
@@ -94,6 +99,14 @@ type RegisterInput struct {
 type PasswordLoginInput struct {
 	Email    string
 	Password string
+}
+
+// LocalDevelopmentLoginInput 是只由本地 transport 配置生成的开发账号输入。
+// 它不是公开 OAuth 合同，调用方不得把浏览器提交的身份信息传入该结构。
+type LocalDevelopmentLoginInput struct {
+	Email       string
+	Timezone    string
+	DisplayName string
 }
 
 // GuestLoginInput 是移动端设备游客登录的领域输入。

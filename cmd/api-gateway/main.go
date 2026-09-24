@@ -42,6 +42,15 @@ func main() {
 		slog.Error("initialize local generation callback handler", "error", err)
 		os.Exit(2)
 	}
+	providerCallback, cleanupProviderCallback, err := newOptionalProviderCallback(
+		providerCallbackEnabled(),
+		getenv("GATEWAY_CONFIG", defaultGatewayConfigPath),
+	)
+	if err != nil {
+		combineCleanups(cleanupCallback)()
+		slog.Error("initialize local provider callback handler", "error", err)
+		os.Exit(2)
+	}
 	paymentCallback, cleanupPaymentCallback, err := newOptionalPaymentCallback(
 		localPaymentCallbackEnabled(),
 		getenv("GATEWAY_CONFIG", defaultGatewayConfigPath),
@@ -63,10 +72,19 @@ func main() {
 	generationStreamHandler, cleanupGenerationStream := newOptionalGenerationStreamHandler(
 		goSessionAuthEnabled() && localGenerationStreamEnabled(), sessionAuthenticator,
 	)
-	paymentEntryEnabled := goSessionAuthEnabled() && localPaymentEntryEnabled() && localIAPTestVerifierEnabled()
+	// External PayCores checkout must not depend on the local IAP test verifier;
+	// the latter only controls the optional store-receipt compatibility path.
+	paymentEntryEnabled := goSessionAuthEnabled() && localPaymentEntryEnabled()
 	var paymentEntry http.Handler
 	var cleanupPaymentEntry func()
-	if localPayCoresMockEnabled() {
+	if payCoresEnabled() {
+		if payCoresProductionEnabled() {
+			if err := validateProductionPayCoresEnvironment(); err != nil {
+				combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth)()
+				slog.Error("validate production PayCores environment", "error", err)
+				os.Exit(2)
+			}
+		}
 		paymentEntry, cleanupPaymentEntry, err = newOptionalPayCoresPaymentEntryHandler(paymentEntryEnabled, getenv("GATEWAY_CONFIG", defaultGatewayConfigPath), sessionAuthenticator)
 	} else {
 		paymentEntry, cleanupPaymentEntry, err = newOptionalPaymentEntryHandler(paymentEntryEnabled, getenv("GATEWAY_CONFIG", defaultGatewayConfigPath), sessionAuthenticator)
@@ -96,13 +114,19 @@ func main() {
 		slog.Error("initialize local media handler", "error", err)
 		os.Exit(2)
 	}
+	r2MediaHandler, cleanupR2Media, err := newOptionalR2MediaHandler()
+	if err != nil {
+		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia)()
+		slog.Error("initialize R2 media handler", "error", err)
+		os.Exit(2)
+	}
 	publicVideoHandler, cleanupPublicVideo, err := newOptionalPublicVideoHandler(
 		publicVideoLocalEnabled(goSessionAuthEnabled(), publicVideoEnabled(), generationCallback),
 		getenv("GATEWAY_CONFIG", defaultGatewayConfigPath),
 		sessionAuthenticator,
 	)
 	if err != nil {
-		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia)()
+		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media)()
 		slog.Error("initialize local public video handler", "error", err)
 		os.Exit(2)
 	}
@@ -112,8 +136,18 @@ func main() {
 		sessionAuthenticator,
 	)
 	if err != nil {
-		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupPublicVideo)()
+		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo)()
 		slog.Error("initialize local auth entry handler", "error", err)
+		os.Exit(2)
+	}
+	adminHandler, cleanupAdmin, err := newOptionalAdminViewHandler(
+		goSessionAuthEnabled() && localAdminEnabled(),
+		getenv("GATEWAY_CONFIG", defaultGatewayConfigPath),
+		sessionAuthenticator,
+	)
+	if err != nil {
+		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo, cleanupAuthEntry)()
+		slog.Error("initialize local admin handler", "error", err)
 		os.Exit(2)
 	}
 	walletViewHandler, cleanupWalletView, err := newOptionalWalletViewHandler(
@@ -122,7 +156,7 @@ func main() {
 		sessionAuthenticator,
 	)
 	if err != nil {
-		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupPublicVideo, cleanupAuthEntry)()
+		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo, cleanupAuthEntry, cleanupAdmin)()
 		slog.Error("initialize local wallet view handler", "error", err)
 		os.Exit(2)
 	}
@@ -132,7 +166,7 @@ func main() {
 		sessionAuthenticator,
 	)
 	if err != nil {
-		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupPublicVideo, cleanupAuthEntry, cleanupWalletView)()
+		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo, cleanupAuthEntry, cleanupAdmin, cleanupWalletView)()
 		slog.Error("initialize local works view handler", "error", err)
 		os.Exit(2)
 	}
@@ -142,7 +176,7 @@ func main() {
 		sessionAuthenticator,
 	)
 	if err != nil {
-		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupPublicVideo, cleanupAuthEntry, cleanupWalletView, cleanupWorksView)()
+		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo, cleanupAuthEntry, cleanupAdmin, cleanupWalletView, cleanupWorksView)()
 		slog.Error("initialize local feedback handler", "error", err)
 		os.Exit(2)
 	}
@@ -152,27 +186,41 @@ func main() {
 		sessionAuthenticator,
 	)
 	if err != nil {
-		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupPublicVideo, cleanupAuthEntry, cleanupWalletView, cleanupWorksView, cleanupFeedback)()
+		combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo, cleanupAuthEntry, cleanupAdmin, cleanupWalletView, cleanupWorksView, cleanupFeedback)()
 		slog.Error("initialize local notification handler", "error", err)
 		os.Exit(2)
 	}
-	cleanupDependencies := combineCleanups(cleanupCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupGenerationStream, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupPublicVideo, cleanupAuthEntry, cleanupWalletView, cleanupWorksView, cleanupFeedback, cleanupNotification)
+	creationCancelHandler, cleanupCreationCancel, err := newOptionalCreationCancelHandler(
+		goSessionAuthEnabled() && creationCancelEnabled(),
+		getenv("GATEWAY_CONFIG", defaultGatewayConfigPath),
+		sessionAuthenticator,
+	)
+	if err != nil {
+		combineCleanups(cleanupCallback, cleanupProviderCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupGenerationStream, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo, cleanupAuthEntry, cleanupAdmin, cleanupWalletView, cleanupWorksView, cleanupFeedback, cleanupNotification)()
+		slog.Error("initialize local creation cancellation handler", "error", err)
+		os.Exit(2)
+	}
+	cleanupDependencies := combineCleanups(cleanupCallback, cleanupProviderCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupGenerationStream, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo, cleanupAuthEntry, cleanupAdmin, cleanupWalletView, cleanupWorksView, cleanupFeedback, cleanupNotification, cleanupCreationCancel)
 	g := newGatewayWithPaymentEntry(
 		upstream,
 		gateway.NewFileRouteSwitch(os.Getenv("GATEWAY_EXACT_ROUTE_SWITCH_FILE")),
 		admissionTimeout,
 		generationCallback,
+		providerCallback,
 		publicT2IHandler,
 		publicVideoHandler,
 		paymentCallback,
 		paymentEntry,
 		authEntryHandler,
+		creationCancelHandler,
 		localMediaHandler,
 		walletViewHandler,
 		worksViewHandler,
 		feedbackHandler,
 		notificationHandler,
 		generationStreamHandler,
+		adminHandler,
+		r2MediaHandler,
 	)
 	slog.Info("api gateway listening", "addr", listenAddr, "upstream", upstream.Redacted())
 	if err := runGateway(listenAddr, g, cleanupDependencies, http.ListenAndServe); err != nil {
@@ -216,7 +264,7 @@ func newGateway(upstream *url.URL, routeSwitch gateway.RouteSwitch, admissionTim
 
 // newGatewayWithPaymentEntry 为 main 提供带本地支付入口的显式装配，保留旧测试辅助函数
 // 的可读参数形态，避免可选 Handler 的位置被不透明的可变参数误解。
-func newGatewayWithPaymentEntry(upstream *url.URL, routeSwitch gateway.RouteSwitch, admissionTimeout time.Duration, generationCallback, publicT2IHandler, publicVideoHandler, paymentCallback, paymentEntry, authEntryHandler http.Handler, localHandlers ...http.Handler) *gateway.Gateway {
+func newGatewayWithPaymentEntry(upstream *url.URL, routeSwitch gateway.RouteSwitch, admissionTimeout time.Duration, generationCallback, providerCallback, publicT2IHandler, publicVideoHandler, paymentCallback, paymentEntry, authEntryHandler, creationCancelHandler http.Handler, localHandlers ...http.Handler) *gateway.Gateway {
 	var localMediaHandler http.Handler
 	var walletViewHandler http.Handler
 	var worksViewHandler http.Handler
@@ -241,22 +289,34 @@ func newGatewayWithPaymentEntry(upstream *url.URL, routeSwitch gateway.RouteSwit
 	if len(localHandlers) > 5 {
 		generationStreamHandler = localHandlers[5]
 	}
+	var adminHandler http.Handler
+	var r2MediaHandler http.Handler
+	if len(localHandlers) > 6 {
+		adminHandler = localHandlers[6]
+	}
+	if len(localHandlers) > 7 {
+		r2MediaHandler = localHandlers[7]
+	}
 	return gateway.New(gateway.Config{
-		DefaultUpstream:     upstream,
-		RouteSwitch:         routeSwitch,
-		AdmissionTimeout:    admissionTimeout,
-		GenerationCallback:  generationCallback,
-		PaymentCallback:     paymentCallback,
-		PaymentEntryHandler: paymentEntry,
-		T2IHandler:          publicT2IHandler,
-		VideoHandler:        publicVideoHandler,
-		AuthEntryHandler:    authEntryHandler,
-		MediaHandler:        localMediaHandler,
-		WalletViewHandler:   walletViewHandler,
-		WorksHandler:        worksViewHandler,
-		FeedbackHandler:     feedbackHandler,
-		NotificationHandler: notificationHandler,
+		DefaultUpstream:         upstream,
+		RouteSwitch:             routeSwitch,
+		AdmissionTimeout:        admissionTimeout,
+		GenerationCallback:      generationCallback,
+		ProviderCallback:        providerCallback,
+		PaymentCallback:         paymentCallback,
+		PaymentEntryHandler:     paymentEntry,
+		T2IHandler:              publicT2IHandler,
+		VideoHandler:            publicVideoHandler,
+		AuthEntryHandler:        authEntryHandler,
+		CreationCancelHandler:   creationCancelHandler,
+		MediaHandler:            localMediaHandler,
+		R2MediaHandler:          r2MediaHandler,
+		WalletViewHandler:       walletViewHandler,
+		WorksHandler:            worksViewHandler,
+		FeedbackHandler:         feedbackHandler,
+		NotificationHandler:     notificationHandler,
 		GenerationStreamHandler: generationStreamHandler,
+		AdminHandler:            adminHandler,
 	})
 }
 
@@ -269,6 +329,13 @@ func gatewayListenAddr() string {
 // Gateway 对 Node 的透明代理，不能借用 routeSwitch 控制该安全边界。
 func generationCallbackEnabled() bool {
 	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_GENERATION_CALLBACK_ENABLED")), "true")
+}
+
+// providerCallbackEnabled 是 PolarStar B2B 终态回调的独立门禁。
+// 它与生成回调分开：两者是不同合同、不同密钥，且 B2B 回调只在 webhook
+// 交付模式下才有意义，因此不能用一个开关同时放行。
+func providerCallbackEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_PROVIDER_CALLBACK_ENABLED")), "true")
 }
 
 // localPaymentCallbackEnabled 是本地 Go 支付回调的独立门禁；默认不得接管 Node 收款路径。
@@ -286,10 +353,33 @@ func localIAPTestVerifierEnabled() bool {
 	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_LOCAL_IAP_TEST_VERIFIER_ENABLED")), "true")
 }
 
-// localPayCoresMockEnabled 是本地 mock 收银台的第四道门禁；未显式开启时保持 local_only，
-// 因而不会因为支付入口接管就请求任何 PayCores 地址。
-func localPayCoresMockEnabled() bool {
-	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_LOCAL_PAYCORES_MOCK_ENABLED")), "true")
+// payCoresEnabled 是真实/本地 PayCores 收银台的显式门禁；未开启时保持 local_only。
+// 旧变量名保留兼容本地 compose，生产建议使用 GATEWAY_PAYCORES_ENABLED。
+func payCoresEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_PAYCORES_ENABLED")), "true") ||
+		strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_LOCAL_PAYCORES_MOCK_ENABLED")), "true")
+}
+
+func payCoresProductionEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_PAYCORES_ENABLED")), "true")
+}
+
+func validateProductionPayCoresEnvironment() error {
+	for _, name := range []string{"PAYCORES_BASE_URL", "PAYCORES_RETURN_URL", "PAYCORES_CANCEL_URL", "PAYCORES_REQUEST_HMAC_KEY", "PAYCORES_CALLBACK_HMAC_KEY"} {
+		if strings.TrimSpace(os.Getenv(name)) == "" {
+			return errors.New(name + " must be injected for production PayCores")
+		}
+	}
+	for _, name := range []string{"PAYCORES_BASE_URL", "PAYCORES_RETURN_URL", "PAYCORES_CANCEL_URL"} {
+		parsed, err := url.Parse(strings.TrimSpace(os.Getenv(name)))
+		if err != nil || parsed.Host == "" || parsed.Scheme != "https" {
+			return errors.New(name + " must be an https URL")
+		}
+	}
+	if len(strings.TrimSpace(os.Getenv("PAYCORES_REQUEST_HMAC_KEY"))) < 32 || len(strings.TrimSpace(os.Getenv("PAYCORES_CALLBACK_HMAC_KEY"))) < 32 {
+		return errors.New("PayCores HMAC keys must be at least 32 characters")
+	}
+	return nil
 }
 
 // localFeedbackEnabled 仅允许本地显式接管反馈写入，默认保持 Node 透明代理。
@@ -302,6 +392,12 @@ func localNotificationsEnabled() bool {
 	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_LOCAL_NOTIFICATIONS_ENABLED")), "true")
 }
 
+// localAdminEnabled 是后台 API 的独立门禁。管理处理器还会验证 admin/super_admin
+// 角色，因此普通 Go 会话不能因路径前缀而获得后台数据。
+func localAdminEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_LOCAL_ADMIN_ENABLED")), "true")
+}
+
 // localGenerationStreamEnabled 是本地内存 SSE 的独立开关，不代表 Redis 兼容或生产放行。
 func localGenerationStreamEnabled() bool {
 	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_LOCAL_GENERATION_STREAM_ENABLED")), "true")
@@ -310,6 +406,13 @@ func localGenerationStreamEnabled() bool {
 // goSessionAuthEnabled 仅允许显式 true 装配 Go 自有会话依赖；它不是公开路由开关。
 func goSessionAuthEnabled() bool {
 	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_GO_SESSION_AUTH_ENABLED")), "true")
+}
+
+// creationCancelEnabled is a separate user-facing mutation gate. A Go session
+// is also required by main before this flag can create a handler; this function
+// deliberately does not infer that requirement from the flag itself.
+func creationCancelEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_CREATION_CANCEL_ENABLED")), "true")
 }
 
 // publicT2IEnabled 是公开纯文生图的第二道显式开关；仅会话开关开启不足以接管 Node 路由。

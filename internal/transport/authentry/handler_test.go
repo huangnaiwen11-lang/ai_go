@@ -44,6 +44,27 @@ func TestRegisterReturnsCreatedEnvelopeWithoutPasswordOrHash(t *testing.T) {
 	}
 }
 
+func TestLoginResponseIncludesUserRole(t *testing.T) {
+	result := testLoginResult()
+	result.User.Role = "admin"
+	handler := NewHandler(staticAuthenticator{}, &recordingUsecase{registerResult: result})
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{"email":"u@example.test","password":"correct-horse","timezone":"UTC"}`)))
+
+	var response struct {
+		Data struct {
+			User map[string]any `json:"user"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if role, ok := response.Data.User["role"]; !ok || role != "admin" {
+		t.Fatalf("user role = %#v, present = %t", role, ok)
+	}
+}
+
 // TestAuthEntryRejectsUnknownFieldsAndInvalidMethods 防止前端绕过冻结请求合同注入字段。
 func TestAuthEntryRejectsUnknownFieldsAndInvalidMethods(t *testing.T) {
 	usecase := &recordingUsecase{registerResult: testLoginResult()}

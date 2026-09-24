@@ -128,6 +128,64 @@ func TestConfirmedCallback订单定位失败时传播且不结算(t *testing.T) 
 	}
 }
 
+func TestConfirmedCallback渠道订单绑定稍晚时在同次投递内恢复(t *testing.T) {
+	fixture := newConfirmedCallbackFixture(t)
+	fixture.locator.orders = []*PaymentOrder{nil, {ID: "payment-order-1"}}
+
+	result, err := fixture.usecase.Handle(context.Background(), fixture.confirmation(t))
+	if err != nil {
+		t.Fatalf("Handle() error = %v", err)
+	}
+	if !result.Applied || result.DiamondBalance != 42 {
+		t.Fatalf("Handle() result = %#v，期望结算结果", result)
+	}
+	if got, want := fixture.events, []string{"consume", "locate", "locate", "settle"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("调用顺序 = %#v，期望 %#v", got, want)
+	}
+	if fixture.nonces.calls != 1 {
+		t.Fatalf("Consume() 调用次数 = %d，期望 1", fixture.nonces.calls)
+	}
+}
+
+func TestConfirmedCallback渠道订单绑定宽限后仍不存在时返回未找到(t *testing.T) {
+	fixture := newConfirmedCallbackFixture(t)
+	fixture.locator.order = nil
+
+	_, err := fixture.usecase.Handle(context.Background(), fixture.confirmation(t))
+	if !errors.Is(err, ErrPaymentOrderNotFound) {
+		t.Fatalf("Handle() error = %v，期望 ErrPaymentOrderNotFound", err)
+	}
+	if got, want := fixture.events, []string{"consume", "locate", "locate"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("调用顺序 = %#v，期望 %#v", got, want)
+	}
+	if fixture.locator.calls != 2 || fixture.settler.calls != 0 {
+		t.Fatalf("FindOrderByProviderOrder()/SettleVerifiedOrder() 调用次数 = %d/%d，期望 2/0", fixture.locator.calls, fixture.settler.calls)
+	}
+}
+
+func TestConfirmedCallback等待渠道订单绑定时Context取消(t *testing.T) {
+	fixture := newConfirmedCallbackFixture(t)
+	fixture.locator.order = nil
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	fixture.locator.afterCall = func(call int) {
+		if call == 1 {
+			cancel()
+		}
+	}
+
+	_, err := fixture.usecase.Handle(ctx, fixture.confirmation(t))
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Handle() error = %v，期望 context.Canceled", err)
+	}
+	if got, want := fixture.events, []string{"consume", "locate"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("调用顺序 = %#v，期望 %#v", got, want)
+	}
+	if fixture.locator.calls != 1 || fixture.settler.calls != 0 {
+		t.Fatalf("FindOrderByProviderOrder()/SettleVerifiedOrder() 调用次数 = %d/%d，期望 1/0", fixture.locator.calls, fixture.settler.calls)
+	}
+}
+
 func TestConfirmedCallback订单关联不一致由既有结算语义拒绝(t *testing.T) {
 	fixture := newConfirmedCallbackFixture(t)
 	fixture.settler.err = ErrPaymentOrderMismatch
@@ -245,18 +303,28 @@ func (fixture *confirmedCallbackFixture) confirmation(t *testing.T) VerifiedPaym
 }
 
 type memoryPaymentOrderLocator struct {
-	events   *[]string
-	err      error
-	calls    int
-	provider Provider
-	orderID  string
-	order    *PaymentOrder
+	events    *[]string
+	err       error
+	calls     int
+	provider  Provider
+	orderID   string
+	order     *PaymentOrder
+	orders    []*PaymentOrder
+	afterCall func(int)
 }
 
 func (locator *memoryPaymentOrderLocator) FindOrderByProviderOrder(_ context.Context, provider Provider, providerOrderID string) (*PaymentOrder, error) {
 	locator.calls++
 	locator.provider, locator.orderID = provider, providerOrderID
 	*locator.events = append(*locator.events, "locate")
+	if locator.afterCall != nil {
+		locator.afterCall(locator.calls)
+	}
+	if len(locator.orders) > 0 {
+		order := locator.orders[0]
+		locator.orders = locator.orders[1:]
+		return order, locator.err
+	}
 	return locator.order, locator.err
 }
 

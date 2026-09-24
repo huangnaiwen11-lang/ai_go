@@ -14,7 +14,7 @@ func newLocalImageTemplateCatalogHandler(next http.Handler) http.Handler {
 		next = http.NotFoundHandler()
 	}
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.Method != http.MethodGet || request.URL == nil || request.URL.Path != localImageTemplateCatalogPath || request.URL.RawQuery != "" {
+		if request.Method != http.MethodGet || request.URL == nil || request.URL.Path != localImageTemplateCatalogPath || request.URL.EscapedPath() != request.URL.Path {
 			next.ServeHTTP(writer, request)
 			return
 		}
@@ -23,7 +23,7 @@ func newLocalImageTemplateCatalogHandler(next http.Handler) http.Handler {
 			"success": true,
 			"data": map[string]any{
 				"items": []map[string]string{{
-					"id": "local-image-edit-dress-up", "title": "本地换装测试模板", "coverUrl": "/cling-ai-icon.png", "type": "image", "contentRating": "sfw",
+					"id": "local-image-edit-dress-up", "title": "本地换装测试模板", "coverUrl": "/legacy/images/homepage/lux-black-marble-portrait.webp", "type": "image", "contentRating": "sfw",
 				}},
 				"total": 1,
 			},

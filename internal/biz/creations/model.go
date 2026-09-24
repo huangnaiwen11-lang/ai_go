@@ -31,6 +31,10 @@ type CreationStatus string
 const (
 	// CreationStatusPendingSubmission 表示本地占位和预留已提交，尚未提交生成中台。
 	CreationStatusPendingSubmission CreationStatus = "pending_submission"
+	// CreationStatusCancelling 表示 owner 已请求撤销至少一个已受理的 B2B 步骤。
+	// 它不是 provider terminal：只有 callback/lookup 的 canonical terminal 才能决定
+	// 成果发布或账本冲正，因而不能把它当作本地失败或直接退款的理由。
+	CreationStatusCancelling CreationStatus = "cancelling"
 	// CreationStatusSubmissionFailed 表示生成中台提交已确定失败，等待外层事务完成冲正和发件箱结案。
 	CreationStatusSubmissionFailed CreationStatus = "submission_failed"
 	// CreationStatusConfiscated 表示审核拒绝后，已预留的权益被没收且不退款。
@@ -85,6 +89,17 @@ type DeferredImageToVideo struct {
 	InputTemplate json.RawMessage
 }
 
+// DeferredRecipeProtocol distinguishes the legacy execution.v2 deferred
+// contract from the B2B public-product contract. Old Mongo documents have no
+// protocol field and are interpreted only as legacy local recipes by the local
+// callback path; B2B never relies on an omitted value.
+type DeferredRecipeProtocol string
+
+const (
+	DeferredRecipeProtocolExecutionV2 DeferredRecipeProtocol = "execution.v2"
+	DeferredRecipeProtocolB2B         DeferredRecipeProtocol = "b2b.job.v2"
+)
+
 // DeferredRecipeStatus 表示延迟图生视频配方的业务状态。
 type DeferredRecipeStatus string
 
@@ -93,6 +108,11 @@ const (
 	DeferredRecipeStatusPending DeferredRecipeStatus = "pending"
 	// DeferredRecipeStatusConsumed 表示首帧已经绑定，不能再次用于生成第二步骤快照。
 	DeferredRecipeStatusConsumed DeferredRecipeStatus = "consumed"
+	// DeferredRecipeStatusAbandoned means the preceding B2B first step reached
+	// a failed/cancelled terminal before an owned opening frame existed. It is a
+	// terminal audit state, not a retry queue: the reservation is reversed in
+	// the same settlement transaction and this recipe can never be activated.
+	DeferredRecipeStatusAbandoned DeferredRecipeStatus = "abandoned"
 )
 
 // DeferredRecipe 是创建事务内冻结的第二步图生视频技术配方。
@@ -101,12 +121,16 @@ type DeferredRecipe struct {
 	StepID        string
 	CreationID    string
 	Atom          StepAtom
+	Protocol      DeferredRecipeProtocol
 	ModelSKU      string
 	InputTemplate []byte
-	Digest        string
-	Status        DeferredRecipeStatus
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	// B2B is present only when Protocol is b2b.job.v2. It remains unbound
+	// until the materializer has written an immutable first frame to R2.
+	B2B       *DeferredB2BImageToVideo
+	Digest    string
+	Status    DeferredRecipeStatus
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // CreateReservedRequest 是创建创作占位和账本预留的内部应用命令。
@@ -121,9 +145,17 @@ type CreateReservedRequest struct {
 	InputDigest     string
 	Plan            []StepPlan
 	// InitialSubmission 仅允许服务端模板编译器填写，未来传输层客户端不得直接构造。
+	// 它是 execution.v2 私有执行合同的快照，只对本地执行有效。
 	InitialSubmission *InitialSubmission
+	// B2BSubmission 仅允许服务端模板编译器填写，且只在首个步骤冻结到 PolarStar B2B
+	// 归属时使用。它与 InitialSubmission 互斥：两种合同的字段不得互相透传。
+	B2BSubmission *B2BProductRecipe
 	// DeferredImageToVideo 仅允许两步骤文生视频的服务端模板编译器填写。
 	DeferredImageToVideo *DeferredImageToVideo
+	// DeferredB2BImageToVideo is the second public-product stage of a B2B
+	// text-to-video plan. It deliberately has no user/provider image URL;
+	// only the verified first-frame materializer may bind one later.
+	DeferredB2BImageToVideo *DeferredB2BImageToVideo
 }
 
 // Creation 是用户可见的创作占位领域对象。
@@ -147,10 +179,12 @@ type Creation struct {
 
 // CreationStep 是创作内部的单个技术原子执行事实。
 type CreationStep struct {
-	ID              string
-	CreationID      string
-	Sequence        int32
-	Atom            StepAtom
+	ID         string
+	CreationID string
+	Sequence   int32
+	Atom       StepAtom
+	// Route is frozen when the step is created and never inferred from current config.
+	Route           ExecutionRoute
 	SubmitStatus    StepSubmitStatus
 	CallbackVersion int64
 	CreatedAt       time.Time
@@ -188,7 +222,17 @@ func requestFingerprint(request CreateReservedRequest, snapshot *executionv2.Sna
 		return "", ErrInvalidCreateCommand
 	}
 
-	fields := make([]string, 0, 12+len(request.Plan)*2)
+	// 公开配方属于请求本身：同一幂等键换一份配方必须被判为冲突，而不是复用旧创作。
+	b2bDigest := ""
+	if request.B2BSubmission != nil {
+		digest, err := request.B2BSubmission.Digest()
+		if err != nil {
+			return "", err
+		}
+		b2bDigest = digest
+	}
+
+	fields := make([]string, 0, 16+len(request.Plan)*2)
 	fields = append(fields,
 		request.UserID,
 		request.TemplateID,
@@ -206,6 +250,9 @@ func requestFingerprint(request CreateReservedRequest, snapshot *executionv2.Sna
 	if snapshot != nil {
 		fields = append(fields, "initial_submission", string(snapshot.Capability), snapshot.ModelSKU, snapshot.Digest)
 	}
+	if b2bDigest != "" {
+		fields = append(fields, "b2b_submission", request.B2BSubmission.ProductKey, request.B2BSubmission.TemplateKey, b2bDigest)
+	}
 	if deferredDigest != "" {
 		fields = append(fields, "deferred_image_to_video", deferredDigest)
 	}
@@ -219,6 +266,16 @@ func requestFingerprint(request CreateReservedRequest, snapshot *executionv2.Sna
 }
 
 func deferredRecipeDigest(request CreateReservedRequest) (string, error) {
+	if request.DeferredImageToVideo != nil && request.DeferredB2BImageToVideo != nil {
+		return "", ErrInvalidCreateCommand
+	}
+	if request.DeferredB2BImageToVideo != nil {
+		normalized, err := request.DeferredB2BImageToVideo.Normalize()
+		if err != nil {
+			return "", ErrInvalidCreateCommand
+		}
+		return normalized.Digest, nil
+	}
 	if request.DeferredImageToVideo == nil {
 		return "", nil
 	}

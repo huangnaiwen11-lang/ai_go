@@ -16,6 +16,28 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
+func TestNewUserDocumentPersistsAssignedRole(t *testing.T) {
+	document := newUserDocument(identity.User{ID: "admin-1", Role: "admin"})
+	encoded, err := bson.Marshal(document)
+	if err != nil {
+		t.Fatalf("marshal user document: %v", err)
+	}
+	var fields bson.M
+	if err := bson.Unmarshal(encoded, &fields); err != nil {
+		t.Fatalf("decode user document: %v", err)
+	}
+	if role, ok := fields["role"]; !ok || role != "admin" {
+		t.Fatalf("persisted role = %#v, present = %t", role, ok)
+	}
+}
+
+func TestToBizUserReturnsAssignedRole(t *testing.T) {
+	user := toBizUser(model.UserDocument{ID: "admin-1", Role: "admin"})
+	if user.Role != "admin" {
+		t.Fatalf("user role = %q", user.Role)
+	}
+}
+
 func TestMongoIdentityUsecaseConcurrentBindingKeepsOneUserAndOneIdentity(t *testing.T) {
 	client := newLocalMongoClient(t)
 	database := client.Database("cling_main")

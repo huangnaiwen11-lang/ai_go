@@ -23,12 +23,14 @@ const (
 )
 
 type Bootstrap struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Server        *Server                `protobuf:"bytes,1,opt,name=server,proto3" json:"server,omitempty"`
-	Data          *Data                  `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	Security      *Security              `protobuf:"bytes,3,opt,name=security,proto3" json:"security,omitempty"`
-	Integrations  *Integrations          `protobuf:"bytes,4,opt,name=integrations,proto3" json:"integrations,omitempty"`
-	Worker        *Worker                `protobuf:"bytes,5,opt,name=worker,proto3" json:"worker,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Server       *Server                `protobuf:"bytes,1,opt,name=server,proto3" json:"server,omitempty"`
+	Data         *Data                  `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Security     *Security              `protobuf:"bytes,3,opt,name=security,proto3" json:"security,omitempty"`
+	Integrations *Integrations          `protobuf:"bytes,4,opt,name=integrations,proto3" json:"integrations,omitempty"`
+	Worker       *Worker                `protobuf:"bytes,5,opt,name=worker,proto3" json:"worker,omitempty"`
+	// 空值兼容既有本地配置；显式值仅允许 local / production。
+	Environment   string `protobuf:"bytes,6,opt,name=environment,proto3" json:"environment,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -96,6 +98,13 @@ func (x *Bootstrap) GetWorker() *Worker {
 		return x.Worker
 	}
 	return nil
+}
+
+func (x *Bootstrap) GetEnvironment() string {
+	if x != nil {
+		return x.Environment
+	}
+	return ""
 }
 
 type Server struct {
@@ -648,7 +657,11 @@ type Integrations_Generation struct {
 	// 主站自己的回调基地址，禁止依赖生成中台默认回调。
 	CallbackBaseUrl string `protobuf:"bytes,2,opt,name=callback_base_url,json=callbackBaseUrl,proto3" json:"callback_base_url,omitempty"`
 	// 中台租户准入密钥；与请求 HMAC、回调 HMAC 分离，不能写入执行载荷。
-	ApiKey        string `protobuf:"bytes,3,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	ApiKey string `protobuf:"bytes,3,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	// 新步骤准入选择；空值仅兼容 local_execution_v2，不影响历史步骤归属。
+	Provider string `protobuf:"bytes,4,opt,name=provider,proto3" json:"provider,omitempty"`
+	// 独立账号与认证；可与上述 local 配置共存以排空历史步骤。
+	PolarstarB2B  *Integrations_PolarStarB2B `protobuf:"bytes,5,opt,name=polarstar_b2b,json=polarstarB2b,proto3" json:"polarstar_b2b,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -704,6 +717,189 @@ func (x *Integrations_Generation) GetApiKey() string {
 	return ""
 }
 
+func (x *Integrations_Generation) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *Integrations_Generation) GetPolarstarB2B() *Integrations_PolarStarB2B {
+	if x != nil {
+		return x.PolarstarB2B
+	}
+	return nil
+}
+
+type Integrations_PolarStarB2B struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 稳定账号身份与供应商签名 body 中的租户身份，不能随凭据轮换改变。
+	AccountRef string `protobuf:"bytes,1,opt,name=account_ref,json=accountRef,proto3" json:"account_ref,omitempty"`
+	TenantId   string `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	BaseUrl    string `protobuf:"bytes,3,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
+	// 仅通过环境/Secret 注入；不可复用 local API Key 或 HMAC。
+	ApiKey string `protobuf:"bytes,4,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	// webhook / lookup_only；后者仅 local 环境且显式禁用回调配置。
+	DeliveryMode   string `protobuf:"bytes,5,opt,name=delivery_mode,json=deliveryMode,proto3" json:"delivery_mode,omitempty"`
+	CallbackOrigin string `protobuf:"bytes,6,opt,name=callback_origin,json=callbackOrigin,proto3" json:"callback_origin,omitempty"`
+	CallbackSecret string `protobuf:"bytes,7,opt,name=callback_secret,json=callbackSecret,proto3" json:"callback_secret,omitempty"`
+	// 精确 host 白名单，不支持通配符、端口、URL 或私网地址。
+	ResultHostAllowlist   []string             `protobuf:"bytes,8,rep,name=result_host_allowlist,json=resultHostAllowlist,proto3" json:"result_host_allowlist,omitempty"`
+	HttpTimeout           *durationpb.Duration `protobuf:"bytes,9,opt,name=http_timeout,json=httpTimeout,proto3" json:"http_timeout,omitempty"`
+	ConnectTimeout        *durationpb.Duration `protobuf:"bytes,10,opt,name=connect_timeout,json=connectTimeout,proto3" json:"connect_timeout,omitempty"`
+	ResponseHeaderTimeout *durationpb.Duration `protobuf:"bytes,11,opt,name=response_header_timeout,json=responseHeaderTimeout,proto3" json:"response_header_timeout,omitempty"`
+	MaxConnectionsPerHost int32                `protobuf:"varint,12,opt,name=max_connections_per_host,json=maxConnectionsPerHost,proto3" json:"max_connections_per_host,omitempty"`
+	MaxResponseBytes      int64                `protobuf:"varint,13,opt,name=max_response_bytes,json=maxResponseBytes,proto3" json:"max_response_bytes,omitempty"`
+	MaxResultBytes        int64                `protobuf:"varint,14,opt,name=max_result_bytes,json=maxResultBytes,proto3" json:"max_result_bytes,omitempty"`
+	MaxInFlight           int32                `protobuf:"varint,15,opt,name=max_in_flight,json=maxInFlight,proto3" json:"max_in_flight,omitempty"`
+	// 轮换重叠期内可接受的上一版本回调密钥；为空表示不启用 previous。
+	CallbackPreviousSecret string `protobuf:"bytes,16,opt,name=callback_previous_secret,json=callbackPreviousSecret,proto3" json:"callback_previous_secret,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *Integrations_PolarStarB2B) Reset() {
+	*x = Integrations_PolarStarB2B{}
+	mi := &file_conf_conf_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Integrations_PolarStarB2B) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Integrations_PolarStarB2B) ProtoMessage() {}
+
+func (x *Integrations_PolarStarB2B) ProtoReflect() protoreflect.Message {
+	mi := &file_conf_conf_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Integrations_PolarStarB2B.ProtoReflect.Descriptor instead.
+func (*Integrations_PolarStarB2B) Descriptor() ([]byte, []int) {
+	return file_conf_conf_proto_rawDescGZIP(), []int{4, 1}
+}
+
+func (x *Integrations_PolarStarB2B) GetAccountRef() string {
+	if x != nil {
+		return x.AccountRef
+	}
+	return ""
+}
+
+func (x *Integrations_PolarStarB2B) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *Integrations_PolarStarB2B) GetBaseUrl() string {
+	if x != nil {
+		return x.BaseUrl
+	}
+	return ""
+}
+
+func (x *Integrations_PolarStarB2B) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
+func (x *Integrations_PolarStarB2B) GetDeliveryMode() string {
+	if x != nil {
+		return x.DeliveryMode
+	}
+	return ""
+}
+
+func (x *Integrations_PolarStarB2B) GetCallbackOrigin() string {
+	if x != nil {
+		return x.CallbackOrigin
+	}
+	return ""
+}
+
+func (x *Integrations_PolarStarB2B) GetCallbackSecret() string {
+	if x != nil {
+		return x.CallbackSecret
+	}
+	return ""
+}
+
+func (x *Integrations_PolarStarB2B) GetResultHostAllowlist() []string {
+	if x != nil {
+		return x.ResultHostAllowlist
+	}
+	return nil
+}
+
+func (x *Integrations_PolarStarB2B) GetHttpTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.HttpTimeout
+	}
+	return nil
+}
+
+func (x *Integrations_PolarStarB2B) GetConnectTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.ConnectTimeout
+	}
+	return nil
+}
+
+func (x *Integrations_PolarStarB2B) GetResponseHeaderTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.ResponseHeaderTimeout
+	}
+	return nil
+}
+
+func (x *Integrations_PolarStarB2B) GetMaxConnectionsPerHost() int32 {
+	if x != nil {
+		return x.MaxConnectionsPerHost
+	}
+	return 0
+}
+
+func (x *Integrations_PolarStarB2B) GetMaxResponseBytes() int64 {
+	if x != nil {
+		return x.MaxResponseBytes
+	}
+	return 0
+}
+
+func (x *Integrations_PolarStarB2B) GetMaxResultBytes() int64 {
+	if x != nil {
+		return x.MaxResultBytes
+	}
+	return 0
+}
+
+func (x *Integrations_PolarStarB2B) GetMaxInFlight() int32 {
+	if x != nil {
+		return x.MaxInFlight
+	}
+	return 0
+}
+
+func (x *Integrations_PolarStarB2B) GetCallbackPreviousSecret() string {
+	if x != nil {
+		return x.CallbackPreviousSecret
+	}
+	return ""
+}
+
 type Integrations_Paycores struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	BaseUrl string                 `protobuf:"bytes,1,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
@@ -716,7 +912,7 @@ type Integrations_Paycores struct {
 
 func (x *Integrations_Paycores) Reset() {
 	*x = Integrations_Paycores{}
-	mi := &file_conf_conf_proto_msgTypes[10]
+	mi := &file_conf_conf_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -728,7 +924,7 @@ func (x *Integrations_Paycores) String() string {
 func (*Integrations_Paycores) ProtoMessage() {}
 
 func (x *Integrations_Paycores) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[10]
+	mi := &file_conf_conf_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -741,7 +937,7 @@ func (x *Integrations_Paycores) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Integrations_Paycores.ProtoReflect.Descriptor instead.
 func (*Integrations_Paycores) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{4, 1}
+	return file_conf_conf_proto_rawDescGZIP(), []int{4, 2}
 }
 
 func (x *Integrations_Paycores) GetBaseUrl() string {
@@ -774,7 +970,7 @@ type Integrations_AppStore struct {
 
 func (x *Integrations_AppStore) Reset() {
 	*x = Integrations_AppStore{}
-	mi := &file_conf_conf_proto_msgTypes[11]
+	mi := &file_conf_conf_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -786,7 +982,7 @@ func (x *Integrations_AppStore) String() string {
 func (*Integrations_AppStore) ProtoMessage() {}
 
 func (x *Integrations_AppStore) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[11]
+	mi := &file_conf_conf_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -799,7 +995,7 @@ func (x *Integrations_AppStore) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Integrations_AppStore.ProtoReflect.Descriptor instead.
 func (*Integrations_AppStore) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{4, 2}
+	return file_conf_conf_proto_rawDescGZIP(), []int{4, 3}
 }
 
 func (x *Integrations_AppStore) GetBaseUrl() string {
@@ -822,7 +1018,7 @@ type Integrations_ContentReview struct {
 
 func (x *Integrations_ContentReview) Reset() {
 	*x = Integrations_ContentReview{}
-	mi := &file_conf_conf_proto_msgTypes[12]
+	mi := &file_conf_conf_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -834,7 +1030,7 @@ func (x *Integrations_ContentReview) String() string {
 func (*Integrations_ContentReview) ProtoMessage() {}
 
 func (x *Integrations_ContentReview) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_conf_proto_msgTypes[12]
+	mi := &file_conf_conf_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -847,7 +1043,7 @@ func (x *Integrations_ContentReview) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Integrations_ContentReview.ProtoReflect.Descriptor instead.
 func (*Integrations_ContentReview) Descriptor() ([]byte, []int) {
-	return file_conf_conf_proto_rawDescGZIP(), []int{4, 3}
+	return file_conf_conf_proto_rawDescGZIP(), []int{4, 4}
 }
 
 func (x *Integrations_ContentReview) GetBaseUrl() string {
@@ -883,13 +1079,14 @@ var File_conf_conf_proto protoreflect.FileDescriptor
 const file_conf_conf_proto_rawDesc = "" +
 	"\n" +
 	"\x0fconf/conf.proto\x12\n" +
-	"kratos.api\x1a\x1egoogle/protobuf/duration.proto\"\xf9\x01\n" +
+	"kratos.api\x1a\x1egoogle/protobuf/duration.proto\"\x9b\x02\n" +
 	"\tBootstrap\x12*\n" +
 	"\x06server\x18\x01 \x01(\v2\x12.kratos.api.ServerR\x06server\x12$\n" +
 	"\x04data\x18\x02 \x01(\v2\x10.kratos.api.DataR\x04data\x120\n" +
 	"\bsecurity\x18\x03 \x01(\v2\x14.kratos.api.SecurityR\bsecurity\x12<\n" +
 	"\fintegrations\x18\x04 \x01(\v2\x18.kratos.api.IntegrationsR\fintegrations\x12*\n" +
-	"\x06worker\x18\x05 \x01(\v2\x12.kratos.api.WorkerR\x06worker\"\xb8\x02\n" +
+	"\x06worker\x18\x05 \x01(\v2\x12.kratos.api.WorkerR\x06worker\x12 \n" +
+	"\venvironment\x18\x06 \x01(\tR\venvironment\"\xb8\x02\n" +
 	"\x06Server\x12+\n" +
 	"\x04http\x18\x01 \x01(\v2\x17.kratos.api.Server.HTTPR\x04http\x12+\n" +
 	"\x04grpc\x18\x02 \x01(\v2\x17.kratos.api.Server.GRPCR\x04grpc\x1ai\n" +
@@ -921,19 +1118,40 @@ const file_conf_conf_proto_rawDesc = "" +
 	"\x12password_time_cost\x18\x05 \x01(\rR\x10passwordTimeCost\x121\n" +
 	"\x14password_parallelism\x18\x06 \x01(\rR\x13passwordParallelism\x12.\n" +
 	"\x13password_salt_bytes\x18\a \x01(\rR\x11passwordSaltBytes\x12,\n" +
-	"\x12password_key_bytes\x18\b \x01(\rR\x10passwordKeyBytes\"\xac\x05\n" +
+	"\x12password_key_bytes\x18\b \x01(\rR\x10passwordKeyBytes\"\x87\f\n" +
 	"\fIntegrations\x12C\n" +
 	"\n" +
 	"generation\x18\x01 \x01(\v2#.kratos.api.Integrations.GenerationR\n" +
 	"generation\x12=\n" +
 	"\bpaycores\x18\x02 \x01(\v2!.kratos.api.Integrations.PaycoresR\bpaycores\x12>\n" +
 	"\tapp_store\x18\x03 \x01(\v2!.kratos.api.Integrations.AppStoreR\bappStore\x12M\n" +
-	"\x0econtent_review\x18\x04 \x01(\v2&.kratos.api.Integrations.ContentReviewR\rcontentReview\x1al\n" +
+	"\x0econtent_review\x18\x04 \x01(\v2&.kratos.api.Integrations.ContentReviewR\rcontentReview\x1a\xd4\x01\n" +
 	"\n" +
 	"Generation\x12\x19\n" +
 	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12*\n" +
 	"\x11callback_base_url\x18\x02 \x01(\tR\x0fcallbackBaseUrl\x12\x17\n" +
-	"\aapi_key\x18\x03 \x01(\tR\x06apiKey\x1ac\n" +
+	"\aapi_key\x18\x03 \x01(\tR\x06apiKey\x12\x1a\n" +
+	"\bprovider\x18\x04 \x01(\tR\bprovider\x12J\n" +
+	"\rpolarstar_b2b\x18\x05 \x01(\v2%.kratos.api.Integrations.PolarStarB2BR\fpolarstarB2b\x1a\xef\x05\n" +
+	"\fPolarStarB2B\x12\x1f\n" +
+	"\vaccount_ref\x18\x01 \x01(\tR\n" +
+	"accountRef\x12\x1b\n" +
+	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x19\n" +
+	"\bbase_url\x18\x03 \x01(\tR\abaseUrl\x12\x17\n" +
+	"\aapi_key\x18\x04 \x01(\tR\x06apiKey\x12#\n" +
+	"\rdelivery_mode\x18\x05 \x01(\tR\fdeliveryMode\x12'\n" +
+	"\x0fcallback_origin\x18\x06 \x01(\tR\x0ecallbackOrigin\x12'\n" +
+	"\x0fcallback_secret\x18\a \x01(\tR\x0ecallbackSecret\x122\n" +
+	"\x15result_host_allowlist\x18\b \x03(\tR\x13resultHostAllowlist\x12<\n" +
+	"\fhttp_timeout\x18\t \x01(\v2\x19.google.protobuf.DurationR\vhttpTimeout\x12B\n" +
+	"\x0fconnect_timeout\x18\n" +
+	" \x01(\v2\x19.google.protobuf.DurationR\x0econnectTimeout\x12Q\n" +
+	"\x17response_header_timeout\x18\v \x01(\v2\x19.google.protobuf.DurationR\x15responseHeaderTimeout\x127\n" +
+	"\x18max_connections_per_host\x18\f \x01(\x05R\x15maxConnectionsPerHost\x12,\n" +
+	"\x12max_response_bytes\x18\r \x01(\x03R\x10maxResponseBytes\x12(\n" +
+	"\x10max_result_bytes\x18\x0e \x01(\x03R\x0emaxResultBytes\x12\"\n" +
+	"\rmax_in_flight\x18\x0f \x01(\x05R\vmaxInFlight\x128\n" +
+	"\x18callback_previous_secret\x18\x10 \x01(\tR\x16callbackPreviousSecret\x1ac\n" +
 	"\bPaycores\x12\x19\n" +
 	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12\x1d\n" +
 	"\n" +
@@ -964,7 +1182,7 @@ func file_conf_conf_proto_rawDescGZIP() []byte {
 	return file_conf_conf_proto_rawDescData
 }
 
-var file_conf_conf_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_conf_conf_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_conf_conf_proto_goTypes = []any{
 	(*Bootstrap)(nil),                  // 0: kratos.api.Bootstrap
 	(*Server)(nil),                     // 1: kratos.api.Server
@@ -976,10 +1194,11 @@ var file_conf_conf_proto_goTypes = []any{
 	(*Server_GRPC)(nil),                // 7: kratos.api.Server.GRPC
 	(*Data_Mongo)(nil),                 // 8: kratos.api.Data.Mongo
 	(*Integrations_Generation)(nil),    // 9: kratos.api.Integrations.Generation
-	(*Integrations_Paycores)(nil),      // 10: kratos.api.Integrations.Paycores
-	(*Integrations_AppStore)(nil),      // 11: kratos.api.Integrations.AppStore
-	(*Integrations_ContentReview)(nil), // 12: kratos.api.Integrations.ContentReview
-	(*durationpb.Duration)(nil),        // 13: google.protobuf.Duration
+	(*Integrations_PolarStarB2B)(nil),  // 10: kratos.api.Integrations.PolarStarB2B
+	(*Integrations_Paycores)(nil),      // 11: kratos.api.Integrations.Paycores
+	(*Integrations_AppStore)(nil),      // 12: kratos.api.Integrations.AppStore
+	(*Integrations_ContentReview)(nil), // 13: kratos.api.Integrations.ContentReview
+	(*durationpb.Duration)(nil),        // 14: google.protobuf.Duration
 }
 var file_conf_conf_proto_depIdxs = []int32{
 	1,  // 0: kratos.api.Bootstrap.server:type_name -> kratos.api.Server
@@ -991,18 +1210,22 @@ var file_conf_conf_proto_depIdxs = []int32{
 	7,  // 6: kratos.api.Server.grpc:type_name -> kratos.api.Server.GRPC
 	8,  // 7: kratos.api.Data.mongo:type_name -> kratos.api.Data.Mongo
 	9,  // 8: kratos.api.Integrations.generation:type_name -> kratos.api.Integrations.Generation
-	10, // 9: kratos.api.Integrations.paycores:type_name -> kratos.api.Integrations.Paycores
-	11, // 10: kratos.api.Integrations.app_store:type_name -> kratos.api.Integrations.AppStore
-	12, // 11: kratos.api.Integrations.content_review:type_name -> kratos.api.Integrations.ContentReview
-	13, // 12: kratos.api.Worker.poll_interval:type_name -> google.protobuf.Duration
-	13, // 13: kratos.api.Server.HTTP.timeout:type_name -> google.protobuf.Duration
-	13, // 14: kratos.api.Server.GRPC.timeout:type_name -> google.protobuf.Duration
-	13, // 15: kratos.api.Integrations.ContentReview.timeout:type_name -> google.protobuf.Duration
-	16, // [16:16] is the sub-list for method output_type
-	16, // [16:16] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	11, // 9: kratos.api.Integrations.paycores:type_name -> kratos.api.Integrations.Paycores
+	12, // 10: kratos.api.Integrations.app_store:type_name -> kratos.api.Integrations.AppStore
+	13, // 11: kratos.api.Integrations.content_review:type_name -> kratos.api.Integrations.ContentReview
+	14, // 12: kratos.api.Worker.poll_interval:type_name -> google.protobuf.Duration
+	14, // 13: kratos.api.Server.HTTP.timeout:type_name -> google.protobuf.Duration
+	14, // 14: kratos.api.Server.GRPC.timeout:type_name -> google.protobuf.Duration
+	10, // 15: kratos.api.Integrations.Generation.polarstar_b2b:type_name -> kratos.api.Integrations.PolarStarB2B
+	14, // 16: kratos.api.Integrations.PolarStarB2B.http_timeout:type_name -> google.protobuf.Duration
+	14, // 17: kratos.api.Integrations.PolarStarB2B.connect_timeout:type_name -> google.protobuf.Duration
+	14, // 18: kratos.api.Integrations.PolarStarB2B.response_header_timeout:type_name -> google.protobuf.Duration
+	14, // 19: kratos.api.Integrations.ContentReview.timeout:type_name -> google.protobuf.Duration
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_conf_conf_proto_init() }
@@ -1016,7 +1239,7 @@ func file_conf_conf_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_conf_conf_proto_rawDesc), len(file_conf_conf_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

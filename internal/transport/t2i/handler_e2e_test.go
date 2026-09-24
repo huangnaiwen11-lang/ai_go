@@ -186,7 +186,7 @@ func TestHandler模板图编辑明确拒绝自动冲正(t *testing.T) {
 
 	client := &t2iE2ENeverSubmitClient{}
 	submitter := worker.NewGenerationSubmissionWorker(
-		fixture.outbox, fixture.submissions, fixture.ledger, fixture.tx, client,
+		fixture.outbox, fixture.submissions, fixture.ledger, fixture.tx, worker.LocalClientRouter{Local: client},
 		nil, "t2i-e2e-rejected", func() time.Time { return fixture.now },
 	)
 	eventID := outbox.SubmissionEventID(stepID)
@@ -225,7 +225,7 @@ func TestHandler模板图编辑审核没收不退款(t *testing.T) {
 
 	client := &t2iE2ENeverSubmitClient{}
 	submitter := worker.NewGenerationSubmissionWorker(
-		fixture.outbox, fixture.submissions, fixture.ledger, fixture.tx, client,
+		fixture.outbox, fixture.submissions, fixture.ledger, fixture.tx, worker.LocalClientRouter{Local: client},
 		t2iE2ERejectedReviewer{}, "t2i-e2e-review", func() time.Time { return fixture.now },
 	)
 	if err := submitter.DeliverOnce(fixture.ctx, outbox.SubmissionEventID(stepID)); err != nil {
@@ -350,7 +350,7 @@ func newT2IE2EMongoFixture(t *testing.T) *t2iE2EMongoFixture {
 	ledgerUsecase := ledger.NewUsecaseWithClock(data.NewLedgerRepository(storage), tx, func() time.Time { return now })
 	creationUsecase := creations.NewUsecaseWithClock(
 		data.NewUserRepository(storage), data.NewSubscriptionRepository(storage), entitlement.NewUsecase(),
-		data.NewCreationRepository(storage), ledgerUsecase, data.NewOutboxRepository(storage), tx, func() time.Time { return now },
+		data.NewCreationRepository(storage), ledgerUsecase, data.NewOutboxRepository(storage), tx, nil, func() time.Time { return now },
 	)
 	identityUsecase := identity.NewUsecase(
 		data.NewUserRepository(storage), data.NewIdentityRepository(storage), data.NewSessionRepository(storage), tx,

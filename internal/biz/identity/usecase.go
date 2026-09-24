@@ -143,6 +143,48 @@ func (usecase *Usecase) LoginWithPassword(ctx context.Context, input PasswordLog
 	return &LoginResult{User: user, Session: &session}, nil
 }
 
+// LoginLocalDevelopment 为显式本地开关下的固定开发账号签发会话。它绝不验证或模拟
+// Google OAuth：账号由受信任的 Gateway 配置确定，首次访问时才创建。该方法不能暴露给
+// 生产路由，否则会绕过正常的凭据校验。
+func (usecase *Usecase) LoginLocalDevelopment(ctx context.Context, input LocalDevelopmentLoginInput) (*LoginResult, error) {
+	email, timezone, err := normalizeLocalDevelopmentInput(input)
+	if err != nil {
+		return nil, err
+	}
+	if err := usecase.requireAuthDependencies(); err != nil {
+		return nil, err
+	}
+
+	credential, err := usecase.credentials.FindActiveByEmail(ctx, email)
+	if errors.Is(err, authcredential.ErrCredentialNotFound) {
+		// 此密码从不离开服务端，仅用于为本地自动创建账号满足现有凭据模型。
+		registered, registerErr := usecase.Register(ctx, RegisterInput{
+			Email:       email,
+			Password:    "local-development-google-account-not-for-production",
+			Timezone:    timezone,
+			DisplayName: strings.TrimSpace(input.DisplayName),
+		})
+		if !errors.Is(registerErr, ErrEmailAlreadyRegistered) {
+			return registered, registerErr
+		}
+		// 并发首次访问时另一请求可能已经创建了账号；重读后继续签发会话。
+		credential, err = usecase.credentials.FindActiveByEmail(ctx, email)
+	}
+	if err != nil {
+		return nil, err
+	}
+	user, err := usecase.users.Find(ctx, credential.UserID)
+	if err != nil || user.AccountStatus != AccountStatusNormal {
+		return nil, ErrInvalidCredentials
+	}
+	now := usecase.clock()
+	session := Session{ID: newOpaqueID(), UserID: user.ID, SessionVersion: user.SessionVersion, ExpiresAt: now.Add(30 * 24 * time.Hour)}
+	if err := usecase.authSessions.Create(ctx, session); err != nil {
+		return nil, err
+	}
+	return &LoginResult{User: user, Session: &session}, nil
+}
+
 // LoginGuest 仅为 iOS、Android 创建或复用设备游客；第一次写入的时区永不覆盖。
 func (usecase *Usecase) LoginGuest(ctx context.Context, input GuestLoginInput) (*LoginResult, error) {
 	platform := strings.ToLower(strings.TrimSpace(input.Platform))
@@ -214,6 +256,14 @@ func normalizeLoginInput(input PasswordLoginInput) (string, string, error) {
 		return "", "", ErrInvalidCredentials
 	}
 	return email, input.Password, nil
+}
+
+func normalizeLocalDevelopmentInput(input LocalDevelopmentLoginInput) (string, string, error) {
+	email, err := normalizeEmail(input.Email)
+	if err != nil || !validTimezone(input.Timezone) {
+		return "", "", ErrInvalidAuthEntryInput
+	}
+	return email, strings.TrimSpace(input.Timezone), nil
 }
 
 func normalizeEmail(raw string) (string, error) {
@@ -378,6 +428,7 @@ func (usecase *Usecase) ValidateSession(ctx context.Context, sessionID string, n
 	}
 	// 内容访问级别来自同一次已验证的用户读取，供模板选择使用，不能信任 HTTP 输入。
 	session.ContentAccess = user.ContentAccess
+	session.Role = user.Role
 	return session, nil
 }
 

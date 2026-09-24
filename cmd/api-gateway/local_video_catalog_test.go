@@ -52,6 +52,77 @@ func TestLocalVideoTemplateCatalog未登录时只返回SFW模板(t *testing.T) {
 	}
 }
 
+func TestLocalVideoTemplateCatalog为旧本地Fixture补齐站内媒体(t *testing.T) {
+	handler := newLocalVideoTemplateCatalogHandler(
+		staticCatalogAuthenticator{},
+		staticCatalogReader{manifest: &catalog.Manifest{Templates: []catalog.TemplateSummary{{
+			TemplateID: "local-video-5-legacy", ProductMode: catalog.ProductModeTemplateVideo, ContentSurface: catalog.ContentSurfaceSFW,
+		}}}},
+		http.NotFoundHandler(),
+	)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/homepage/video-templates", nil))
+	body := recorder.Body.String()
+	for _, expected := range []string{"城市漫游", "/legacy/templates/covers/bridge-tile-1.jpg", "/legacy/templates/videos/bridge-tile-1.mp4"} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("旧本地 fixture 未补齐 %q：%s", expected, body)
+		}
+	}
+}
+
+// 原用户端会附带 catalog 缓存旁路、分类与分页参数；本地 Go 目录必须保持同一读合同，
+// 否则 Gateway 会错误回退到已移除的 Node 服务。
+func TestLocalVideoTemplateCatalog接受原用户端查询参数(t *testing.T) {
+	handler := newLocalVideoTemplateCatalogHandler(
+		staticCatalogAuthenticator{},
+		staticCatalogReader{manifest: &catalog.Manifest{Templates: []catalog.TemplateSummary{{
+			TemplateID: "local-video-5-legacy", ProductMode: catalog.ProductModeTemplateVideo, ContentSurface: catalog.ContentSurfaceSFW,
+		}}}},
+		http.NotFoundHandler(),
+	)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/homepage/video-templates?category=all&limit=24&offset=0&maxRating=sfw&catalog=cache-bypass", nil))
+
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"category":"photoToVideo"`) || !strings.Contains(recorder.Body.String(), `"limit":24`) {
+		t.Fatalf("带原用户端查询参数的视频目录响应错误：status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestLocalVideoTemplateCatalog按分类返回正确总数(t *testing.T) {
+	handler := newLocalVideoTemplateCatalogHandler(
+		staticCatalogAuthenticator{},
+		staticCatalogReader{manifest: &catalog.Manifest{Templates: []catalog.TemplateSummary{{
+			TemplateID: "local-video-5-legacy", ProductMode: catalog.ProductModeTemplateVideo, ContentSurface: catalog.ContentSurfaceSFW,
+		}}}},
+		http.NotFoundHandler(),
+	)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/homepage/video-templates?category=animate&limit=24", nil))
+
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"items":[]`) || !strings.Contains(recorder.Body.String(), `"total":0`) {
+		t.Fatalf("空分类应返回空分页结果：status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+// 原用户端的生图页通过 homepage/content 读取 imagePresets；该兼容投影也要允许
+// catalog 查询参数，并与视频模板共享同一套本地模板事实。
+func TestLocalVideoTemplateCatalog提供带查询参数的HomepageContent(t *testing.T) {
+	handler := newLocalVideoTemplateCatalogHandler(
+		staticCatalogAuthenticator{},
+		staticCatalogReader{manifest: &catalog.Manifest{Templates: []catalog.TemplateSummary{{
+			TemplateID: "local-video-5-legacy", ProductMode: catalog.ProductModeTemplateVideo, ContentSurface: catalog.ContentSurfaceSFW,
+		}}}},
+		http.NotFoundHandler(),
+	)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/homepage/content?catalog=cache-bypass", nil))
+
+	body := recorder.Body.String()
+	if recorder.Code != http.StatusOK || !strings.Contains(body, `"imagePresets"`) || !strings.Contains(body, `"photoToVideo"`) || !strings.Contains(body, `"local-image-edit-dress-up"`) {
+		t.Fatalf("homepage/content 兼容投影错误：status=%d body=%s", recorder.Code, body)
+	}
+}
+
 type staticCatalogAuthenticator struct {
 	identity *sessionauth.AuthenticatedIdentity
 }

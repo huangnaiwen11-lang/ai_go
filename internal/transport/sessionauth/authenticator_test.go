@@ -15,7 +15,7 @@ import (
 
 func TestAuthenticatorAuthenticate验证单个Go会话并仅返回用户标识(t *testing.T) {
 	fixedNow := time.Date(2026, time.September, 8, 9, 30, 0, 0, time.FixedZone("CST", 8*60*60))
-	validator := &fakeSessionValidator{session: &identity.Session{UserID: "go-user-1", ContentAccess: identity.ContentAccessReviewRestricted}}
+	validator := &fakeSessionValidator{session: &identity.Session{UserID: "go-user-1", ContentAccess: identity.ContentAccessReviewRestricted, Role: "admin"}}
 	authenticator := NewAuthenticatorWithClock(validator, func() time.Time { return fixedNow })
 	request := httptest.NewRequest(http.MethodPost, "/api/chat/image/async", nil)
 	request.Header.Set("Authorization", "bEaReR session-1")
@@ -25,7 +25,7 @@ func TestAuthenticatorAuthenticate验证单个Go会话并仅返回用户标识(t
 	if err != nil {
 		t.Fatalf("Authenticate() error = %v", err)
 	}
-	if got == nil || got.UserID != "go-user-1" || got.ContentAccess != identity.ContentAccessReviewRestricted {
+	if got == nil || got.UserID != "go-user-1" || got.ContentAccess != identity.ContentAccessReviewRestricted || got.Role != "admin" {
 		t.Fatalf("Authenticate() identity = %#v, want user go-user-1", got)
 	}
 	if validator.calls != 1 || validator.gotSessionID != "session-1" {

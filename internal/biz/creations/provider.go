@@ -73,6 +73,10 @@ func (adapter *reservationUsecaseAdapter) CurrentDiamondBalance(ctx context.Cont
 }
 
 // ProviderSet 是创作模块的依赖注入入口。
+//
+// 它不提供 AdmissionResolver：归属解析器必须由组合根按运行配置构造
+// （见 integrations/generation.NewAdmissionResolver），这样「selector 选 B2B
+// 却没有可用解析器」会在启动时报错，而不是在运行期把新步骤悄悄冻成本地。
 var ProviderSet = wire.NewSet(
 	NewUsecase,
 	NewUserReaderAdapter,

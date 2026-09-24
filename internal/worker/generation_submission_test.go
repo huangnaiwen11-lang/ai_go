@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"ai-business-service/internal/biz/contentreview"
+	"ai-business-service/internal/biz/creations"
 	"ai-business-service/internal/biz/generation"
 	"ai-business-service/internal/biz/identity"
 	"ai-business-service/internal/biz/ledger"
@@ -118,6 +120,86 @@ func TestDeliverOnce本地载荷校验失败时不请求中台并立即冲正(t 
 	}
 }
 
+func TestDeliverOnce拒绝B2B冻结路由且不触发任何副作用(t *testing.T) {
+	fixture := newSubmissionWorkerFixture(t, func(writer http.ResponseWriter, request *http.Request) {
+		t.Fatalf("unsupported route must not call provider: %s", request.URL.Path)
+	})
+	fixture.store.record.Route = creations.ExecutionRoute{
+		Provider: creations.PolarStarB2BProvider, AccountRef: "account-a",
+		ContractVersion: creations.B2BContractVersion, MappingVersion: "polarstar.image.v1",
+	}
+	fixture.store.record.ContentAccess = identity.ContentAccessReviewRestricted
+	if err := fixture.worker.DeliverOnce(fixture.ctx, fixture.event.ID); !isFailClosedRouteError(err) {
+		t.Fatalf("DeliverOnce() error = %v, want fail-closed route error", err)
+	}
+	if fixture.reviewer.calls != 0 || fixture.reverser.calls != 0 || fixture.reverser.confiscateCalls != 0 || fixture.store.rejectedCalls != 0 || fixture.store.confiscatedCalls != 0 || fixture.lookupCount != 0 {
+		t.Fatalf("unsupported route caused side effects: reviewer=%d reverse=%d confiscate=%d rejected=%d", fixture.reviewer.calls, fixture.reverser.calls, fixture.reverser.confiscateCalls, fixture.store.rejectedCalls)
+	}
+}
+
+func TestDeliverOnce拒绝部分或未知冻结路由(t *testing.T) {
+	cases := []creations.ExecutionRoute{
+		{Provider: creations.LocalExecutionProvider},
+		{Provider: "unknown-provider", AccountRef: "acct", ContractVersion: "contract", MappingVersion: "mapping"},
+		{Provider: creations.LocalExecutionProvider, AccountRef: creations.DefaultLocalAccount, ContractVersion: creations.B2BContractVersion, MappingVersion: creations.LocalMappingVersion},
+	}
+	for _, route := range cases {
+		route := route
+		t.Run(route.Provider+":"+route.AccountRef, func(t *testing.T) {
+			fixture := newSubmissionWorkerFixture(t, func(writer http.ResponseWriter, request *http.Request) { t.Fatalf("invalid route called provider") })
+			fixture.store.record.Route = route
+			if err := fixture.worker.DeliverOnce(fixture.ctx, fixture.event.ID); !errors.Is(err, ErrUnsupportedSubmissionRoute) {
+				t.Fatalf("error = %v, want unsupported route", err)
+			}
+			if fixture.reverser.calls != 0 || fixture.store.rejectedCalls != 0 {
+				t.Fatal("invalid route entered refund path")
+			}
+		})
+	}
+}
+
+func TestDeliverOnce历史空路由仍按本地处理(t *testing.T) {
+	postCalls := 0
+	fixture := newSubmissionWorkerFixture(t, func(writer http.ResponseWriter, request *http.Request) {
+		postCalls++
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusCreated)
+		_, _ = writer.Write([]byte(`{"success":true,"data":{"jobId":"job-local-route","status":"queued"}}`))
+	})
+	fixture.store.record.Route = creations.ExecutionRoute{}
+	if err := fixture.worker.DeliverOnce(fixture.ctx, fixture.event.ID); err != nil {
+		t.Fatalf("empty historical route: %v", err)
+	}
+	if postCalls != 1 || fixture.store.submittedJobID != "job-local-route" {
+		t.Fatalf("local submission calls/job=%d/%q", postCalls, fixture.store.submittedJobID)
+	}
+}
+
+func TestReconcile拒绝B2B冻结路由且不Lookup(t *testing.T) {
+	fixture := newReconcilingFixture(t, http.StatusOK)
+	fixture.store.record.Route = creations.ExecutionRoute{Provider: creations.PolarStarB2BProvider, AccountRef: "account-a", ContractVersion: creations.B2BContractVersion, MappingVersion: "polarstar.image.v1"}
+	if err := fixture.worker.DeliverOnce(fixture.ctx, fixture.event.ID); !isFailClosedRouteError(err) {
+		t.Fatalf("error=%v, want fail-closed route error", err)
+	}
+	if fixture.lookupCount != 0 || fixture.reverser.calls != 0 {
+		t.Fatalf("unsupported route lookup/refund: lookup=%d reverse=%d", fixture.lookupCount, fixture.reverser.calls)
+	}
+}
+
+// isFailClosedRouteError 判定「冻结路由解析不出出站能力」这一类错误。
+//
+// 两种来源都必须以同一方式收敛——不调用上游、不冲正、不重排、不没收：
+//   - ErrUnsupportedSubmissionRoute：路由自身非法，或解析出的句柄既非本地也非 B2B
+//   - platform.ErrProviderNotEnabled / ErrProviderRouteMismatch：运行配置没有授权
+//     该 provider 或账号，属配置与冻结身份不一致
+//
+// 它们都可能是「上游已经受理但本地还不知道」的情形，因此绝不能被当成条件写冲突。
+func isFailClosedRouteError(err error) bool {
+	return errors.Is(err, ErrUnsupportedSubmissionRoute) ||
+		errors.Is(err, platform.ErrProviderNotEnabled) ||
+		errors.Is(err, platform.ErrProviderRouteMismatch)
+}
+
 func TestDeliverOnce本地空Nonce时不请求中台并立即冲正(t *testing.T) {
 	postCount := 0
 	fixture := newSubmissionWorkerFixture(t, func(_ http.ResponseWriter, request *http.Request) {
@@ -134,7 +216,7 @@ func TestDeliverOnce本地空Nonce时不请求中台并立即冲正(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture.worker = NewGenerationSubmissionWorker(fixture.outbox, fixture.store, fixture.reverser, fixture.tx, client, fixture.reviewer, "worker-test", func() time.Time { return fixture.now })
+	fixture.worker = NewGenerationSubmissionWorker(fixture.outbox, fixture.store, fixture.reverser, fixture.tx, LocalClientRouter{Local: client}, fixture.reviewer, "worker-test", func() time.Time { return fixture.now })
 
 	if err := fixture.worker.DeliverOnce(fixture.ctx, fixture.event.ID); err != nil {
 		t.Fatalf("DeliverOnce() error = %v", err)
@@ -201,6 +283,9 @@ func TestDeliverOnce请求超时先查询且不创建第二个技术任务(t *te
 		t.Fatalf("超时后 POST/lookup = %d/%d, want 1/0", fixture.postCount, fixture.lookupCount)
 	}
 
+	// 未知结果会按退避重新可领取；把夹具时钟推过退避窗口才能触发第二次领取。
+	// 若这里不推进，事件会因 next_attempt_at 未到而被跳过——那正是本用例要防的忙轮询。
+	fixture.now = fixture.now.Add(submissionRetryBase)
 	if err := fixture.worker.DeliverOnce(fixture.ctx, fixture.event.ID); err != nil {
 		t.Fatalf("第二次 DeliverOnce() error = %v", err)
 	}
@@ -254,7 +339,7 @@ func TestDeliverOnce指定目标不领取其他事件且目标仍首次提交(t 
 		t.Fatalf("创建其他测试事件: %v", err)
 	}
 	targetedOutbox := &targetedMemoryOutbox{events: []*outbox.Event{other, fixture.event}}
-	fixture.worker = NewGenerationSubmissionWorker(targetedOutbox, fixture.store, fixture.reverser, fixture.tx, mustWorkerClient(t, fixture), fixture.reviewer, "worker-test", func() time.Time { return fixture.now })
+	fixture.worker = NewGenerationSubmissionWorker(targetedOutbox, fixture.store, fixture.reverser, fixture.tx, LocalClientRouter{Local: mustWorkerClient(t, fixture)}, fixture.reviewer, "worker-test", func() time.Time { return fixture.now })
 
 	if err := fixture.worker.DeliverOnce(fixture.ctx, fixture.event.ID); err != nil {
 		t.Fatalf("DeliverOnce() error = %v", err)
@@ -276,7 +361,9 @@ func TestDeliverOnce查询仍未知时带退避重新入队(t *testing.T) {
 	if fixture.event.DeliveryStatus != outbox.DeliveryStatusPending {
 		t.Fatalf("event status = %s, want pending", fixture.event.DeliveryStatus)
 	}
-	if got, want := fixture.event.NextAttemptAt, fixture.now.Add(defaultRetryBackoff); !got.Equal(want) {
+	// 该夹具的 record.Fence 为 0，对应首次退避 10s。具体数值由
+	// submission_backoff_test.go 逐一钉住，这里只断言「不是立即重试」。
+	if got, want := fixture.event.NextAttemptAt, fixture.now.Add(submissionRetryBase); !got.Equal(want) {
 		t.Fatalf("next attempt = %s, want %s", got, want)
 	}
 	if fixture.reverser.calls != 0 || fixture.store.rejectedCalls != 0 {
@@ -358,7 +445,7 @@ func newSubmissionWorkerFixture(t *testing.T, handler http.HandlerFunc) *submiss
 	fixture.reverser = &memoryReverser{recorder: fixture.recorder}
 	fixture.reviewer = &memoryReviewer{}
 	fixture.tx = &memoryTxRunner{}
-	fixture.worker = NewGenerationSubmissionWorker(fixture.outbox, fixture.store, fixture.reverser, fixture.tx, client, fixture.reviewer, "worker-test", func() time.Time { return fixture.now })
+	fixture.worker = NewGenerationSubmissionWorker(fixture.outbox, fixture.store, fixture.reverser, fixture.tx, LocalClientRouter{Local: client}, fixture.reviewer, "worker-test", func() time.Time { return fixture.now })
 	return fixture
 }
 
@@ -422,9 +509,10 @@ func (fixture *submissionWorkerFixture) assertFailedAndReversed(t *testing.T) {
 }
 
 type memoryOutboxRepository struct {
-	event       *outbox.Event
-	failedCalls int
-	recorder    *operationRecorder
+	event         *outbox.Event
+	failedCalls   int
+	attendedCalls int
+	recorder      *operationRecorder
 }
 
 func (repository *memoryOutboxRepository) Enqueue(context.Context, *outbox.Event) error { return nil }
@@ -450,6 +538,13 @@ func (repository *memoryOutboxRepository) ClaimByIDAndType(ctx context.Context, 
 	}
 	return repository.Claim(ctx, workerID, now, leaseUntil)
 }
+func (repository *memoryOutboxRepository) RenewLease(_ context.Context, eventID, leaseToken string, now, leaseUntil time.Time) error {
+	if repository.event == nil || eventID != repository.event.ID || leaseToken != repository.event.LeaseToken || !repository.event.LeaseUntil.After(now) || !leaseUntil.After(now) {
+		return outbox.ErrLeaseConflict
+	}
+	repository.event.LeaseUntil = leaseUntil
+	return nil
+}
 func (repository *memoryOutboxRepository) Requeue(_ context.Context, eventID, leaseToken string, next time.Time) error {
 	if eventID != repository.event.ID || leaseToken != repository.event.LeaseToken {
 		return outbox.ErrLeaseConflict
@@ -471,6 +566,24 @@ func (repository *memoryOutboxRepository) MarkFailed(_ context.Context, eventID,
 	repository.event.DeliveryStatus = outbox.DeliveryStatusFailed
 	repository.event.LeaseToken = ""
 	return nil
+}
+
+func (repository *memoryOutboxRepository) MarkNeedsAttention(_ context.Context, eventID, leaseToken string, reason outbox.AttentionReason, _ time.Time) error {
+	if eventID != repository.event.ID || leaseToken != repository.event.LeaseToken {
+		return outbox.ErrLeaseConflict
+	}
+	repository.attendedCalls++
+	repository.recorder.add("needs_attention")
+	repository.event.DeliveryStatus = outbox.DeliveryStatusNeedsAttention
+	repository.event.AttentionReason = reason
+	repository.event.LeaseToken = ""
+	return nil
+}
+
+// RedriveAttention 只是接口占位：重驱语义由 internal/data 的 Mongo 实现与
+// outbox 的重驱用例测试覆盖，提交链路的用例不驱动人工重驱。
+func (repository *memoryOutboxRepository) RedriveAttention(context.Context, outbox.RedriveCommand) (*outbox.Event, error) {
+	return nil, outbox.ErrRedriveNotEligible
 }
 
 // targetedMemoryOutbox 模拟同一队列中的多个事件，用于验证指定投递不会占用其他事件。
@@ -500,6 +613,16 @@ func (repository *targetedMemoryOutbox) ClaimByIDAndType(_ context.Context, _ st
 		return event, nil
 	}
 	return nil, nil
+}
+
+func (repository *targetedMemoryOutbox) RenewLease(_ context.Context, eventID, leaseToken string, now, leaseUntil time.Time) error {
+	for _, event := range repository.events {
+		if event != nil && event.ID == eventID && event.LeaseToken == leaseToken && event.LeaseUntil.After(now) && leaseUntil.After(now) {
+			event.LeaseUntil = leaseUntil
+			return nil
+		}
+	}
+	return outbox.ErrLeaseConflict
 }
 
 func (repository *targetedMemoryOutbox) claimFirst(now, leaseUntil time.Time, eventType outbox.EventType) (*outbox.Event, error) {
@@ -536,6 +659,23 @@ func (repository *targetedMemoryOutbox) MarkFailed(context.Context, string, stri
 	return nil
 }
 
+func (repository *targetedMemoryOutbox) MarkNeedsAttention(_ context.Context, eventID, leaseToken string, reason outbox.AttentionReason, _ time.Time) error {
+	for _, event := range repository.events {
+		if event != nil && event.ID == eventID && event.LeaseToken == leaseToken {
+			event.DeliveryStatus = outbox.DeliveryStatusNeedsAttention
+			event.AttentionReason = reason
+			event.LeaseToken = ""
+			return nil
+		}
+	}
+	return outbox.ErrLeaseConflict
+}
+
+// RedriveAttention 只是接口占位：本包的用例不驱动人工重驱。
+func (repository *targetedMemoryOutbox) RedriveAttention(context.Context, outbox.RedriveCommand) (*outbox.Event, error) {
+	return nil, outbox.ErrRedriveNotEligible
+}
+
 type memorySubmissionStore struct {
 	record           generation.SubmissionRecord
 	event            *outbox.Event
@@ -543,6 +683,7 @@ type memorySubmissionStore struct {
 	submittedJobID   string
 	reconcilingCalls int
 	rejectedCalls    int
+	rejectionCause   generation.ProviderRejectionCause
 	confiscatedCalls int
 	readFacts        int
 	rejectError      error
@@ -564,21 +705,25 @@ func (store *memorySubmissionStore) MarkSubmitted(_ context.Context, command gen
 	}
 	return nil
 }
-func (store *memorySubmissionStore) MarkReconciling(_ context.Context, _ generation.ReconcilingCommand) error {
+func (store *memorySubmissionStore) MarkReconciling(_ context.Context, command generation.ReconcilingCommand) error {
 	store.status = "reconciling"
 	store.reconcilingCalls++
 	if store.event != nil {
 		store.event.DeliveryStatus = outbox.DeliveryStatusReconciling
 		store.event.LeaseToken = ""
+		// 再次可领取时刻由命令给出，必须原样落到事件上：夹具若把它丢掉，
+		// 断言「退避生效」的用例就会在什么都没调度的前提下通过。
+		store.event.NextAttemptAt = command.NextAttemptAt
 	}
 	return nil
 }
-func (store *memorySubmissionStore) MarkRejected(_ context.Context, _ generation.RejectedCommand) error {
+func (store *memorySubmissionStore) MarkRejected(_ context.Context, command generation.RejectedCommand) error {
 	if store.rejectError != nil {
 		return store.rejectError
 	}
 	store.status = "failed"
 	store.rejectedCalls++
+	store.rejectionCause = command.ProviderRejectionCause
 	store.recorder.add("rejected")
 	return nil
 }

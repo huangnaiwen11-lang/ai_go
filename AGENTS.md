@@ -118,6 +118,34 @@ Tests live beside the code they cover (`*_test.go`). Test layers in
 isolation: service tests fake the usecase, biz tests fake the repo, data
 tests exercise repo implementations at the storage boundary.
 
+## 对象存储契约（冻结，不可擅自改动）
+
+> 本节是**项目级硬约束**，不属于上面的模板内容。
+> 跨模块约束见仓库根的 `Cling/AGENTS.md`；**本文件与同目录 `CLAUDE.md` 是逐字节镜像**，改一处必须同步另一处。
+
+**对象存储采用旧项目 `ai-host-v2-platform-main` 的方案，不得更换、不得改名、不得改默认值。**
+
+- **服务商固定为 Cloudflare R2**（S3 兼容 API，`region: 'auto'`，endpoint 由 `R2_ACCOUNT_ID` 构造）。
+  不引入 MinIO / 阿里云 OSS / 腾讯云 COS / AWS S3 / 本地磁盘等任何替代实现。
+- **桶拓扑固定**：公开桶 `R2_BUCKET_NAME` + 私有桶 `R2_PRIVATE_BUCKET_NAME`（另有法律页专用私有桶）。
+  私有桶**不得**通过公开域名暴露，只能走 HMAC 签名代理。
+- **环境变量名、默认值、签名算法、路径、缓存头、限长一律逐项对齐原项目**。
+  完整基线（含 15 个变量、签名算法、前缀白名单、非公网地址段清单、各类上限）见
+  **`docs/对象存储_配置基线.md`**——改动前必须逐项对照，不要凭记忆改。
+- **三个对外路径是硬契约**，必须存在且语义不变：
+  `/api/v1/media/object`（私有桶签名代理）、`/api/media/image`（公开桶图片优化）、
+  `/media/refresh-download-link`（签名 URL 刷新）。
+- **私有桶代理签名算法不可改**：`base64url(HMAC-SHA256(secret, "b=" + bucket + "&k=" + key))`，
+  定时安全比较，任何校验失败一律返回 **404**（不是 401/403，避免枚举对象）。
+- **私有桶 key 必须命中前缀白名单**：`ugc/ images/ videos/ animate/ animate-thumb/ double-action/ ai-body/ agents/ sex-pose/`。
+- **出站下载的安全约束不得放宽**：公网地址校验（含 DNS rebinding 防护）、拒绝裸 IP 的 provider URL、
+  重定向上限与跨 origin 剥离敏感头、字节上限三重校验。放宽任何一条都是安全回退。
+- **为什么不能改**：`ai-frontend` 是原版整体迁移且**不可修改**，它已把 R2 公网域名
+  （`https://pub-...r2.dev`）、上述三个路径、宽度档位 `[240,320,480,640,800,1080,1440]`
+  **硬编码**在源码里（清单见基线文档 §4.2）。改动任一项都会让线上前端立刻失效。
+- **变更流程**：任何偏离基线文档的行为都必须先取得用户显式批准，并在基线文档记录理由与日期。
+  默认动作是**对齐**，不是**改进**；发现原项目有缺陷时**记录并上报**，不要顺手修正。
+
 ## Generation & generated files
 
 Regenerate via `make api`, `make config`, or `make all`; never hand-edit

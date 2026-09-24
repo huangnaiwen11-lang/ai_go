@@ -17,6 +17,19 @@ type readRepositoryStub struct {
 	orderCalls int
 }
 
+type paycoresStatusStub struct {
+	result          PayCoresOrderStatusSnapshot
+	err             error
+	calls           int
+	orderID, userID string
+}
+
+func (stub *paycoresStatusStub) GetPayCoresOrderStatus(_ context.Context, orderID, userID string) (PayCoresOrderStatusSnapshot, error) {
+	stub.calls++
+	stub.orderID, stub.userID = orderID, userID
+	return stub.result, stub.err
+}
+
 func (repo *readRepositoryStub) ListPublishedProductSnapshots(context.Context) ([]PaymentProduct, error) {
 	return repo.products, repo.err
 }
@@ -104,5 +117,69 @@ func TestReadOrderOwnershipMissingAndErrors(t *testing.T) {
 				t.Fatal("anonymous request reached repository")
 			}
 		})
+	}
+}
+
+func TestReadPendingPayCoresOrderReportsReceivedButDoesNotSettle(t *testing.T) {
+	repo := &readRepositoryStub{order: readOrder(PaymentOrderStatusPending)}
+	remote := &paycoresStatusStub{result: PayCoresOrderStatusSnapshot{OrderID: "external-1", ProductID: "coins_100", AmountUSD: 9.99, Status: "paid", PaymentReceived: true, BackendReady: true}}
+	got, err := NewReadUsecaseWithPayCoresStatus(repo, remote).OrderStatus(context.Background(), "user-1", "order-1")
+	if err != nil || !got.PaymentReceived || got.BackendReady || got.Status != PaymentOrderStatusPending || repo.order.Status != PaymentOrderStatusPending {
+		t.Fatalf("status = %#v, local = %#v, err = %v", got, repo.order, err)
+	}
+	if remote.calls != 1 || remote.orderID != "external-1" || remote.userID != "user-1" {
+		t.Fatalf("remote call = %#v", remote)
+	}
+}
+
+func TestReadPayCoresStatusRequiresMatchingFrozenFacts(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*PayCoresOrderStatusSnapshot)
+	}{
+		{"order ID", func(s *PayCoresOrderStatusSnapshot) { s.OrderID = "different" }},
+		{"product ID", func(s *PayCoresOrderStatusSnapshot) { s.ProductID = "other" }},
+		{"amount", func(s *PayCoresOrderStatusSnapshot) { s.AmountUSD = 9.98 }},
+		{"status", func(s *PayCoresOrderStatusSnapshot) { s.Status = "pending" }},
+		{"receipt flag", func(s *PayCoresOrderStatusSnapshot) { s.PaymentReceived = false }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			snapshot := PayCoresOrderStatusSnapshot{OrderID: "external-1", ProductID: "coins_100", AmountUSD: 9.99, Status: "paid", PaymentReceived: true}
+			tc.mutate(&snapshot)
+			got, err := NewReadUsecaseWithPayCoresStatus(&readRepositoryStub{order: readOrder(PaymentOrderStatusPending)}, &paycoresStatusStub{result: snapshot}).OrderStatus(context.Background(), "user-1", "order-1")
+			if err != nil || got.PaymentReceived || got.BackendReady || got.Status != PaymentOrderStatusPending {
+				t.Fatalf("status = %#v, err = %v", got, err)
+			}
+		})
+	}
+}
+
+func TestReadPayCoresStatusSkipsUnknownOrUnauthorizedOrders(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		order     *PaymentOrder
+		user      string
+		wantCalls int
+	}{
+		{"other owner", readOrder(PaymentOrderStatusPending), "user-2", 0},
+		{"already settled", readOrder(PaymentOrderStatusPaid), "user-1", 0},
+		{"unbound", func() *PaymentOrder {
+			o := readOrder(PaymentOrderStatusPending)
+			o.ProviderOrderID = "local-paycores-order-1"
+			return o
+		}(), "user-1", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			remote := &paycoresStatusStub{err: errors.New("upstream offline")}
+			_, _ = NewReadUsecaseWithPayCoresStatus(&readRepositoryStub{order: tc.order}, remote).OrderStatus(context.Background(), tc.user, "order-1")
+			if remote.calls != tc.wantCalls {
+				t.Fatalf("remote calls = %d", remote.calls)
+			}
+		})
+	}
+	remote := &paycoresStatusStub{err: errors.New("upstream offline")}
+	got, err := NewReadUsecaseWithPayCoresStatus(&readRepositoryStub{order: readOrder(PaymentOrderStatusPending)}, remote).OrderStatus(context.Background(), "user-1", "order-1")
+	if err != nil || got.PaymentReceived || got.BackendReady || remote.calls != 1 {
+		t.Fatalf("upstream failure status = %#v, calls = %d, err = %v", got, remote.calls, err)
 	}
 }

@@ -16,6 +16,7 @@ func TestPaymentReadExactRoutes(t *testing.T) {
 		want              bool
 	}{
 		{"GET", "/api/wallet/products", "/api/wallet/products", true},
+		{"GET", "/api/wallet/external-payment-methods", "/api/wallet/external-payment-methods", true},
 		{"GET", "/api/payments/order-status/order-1", "/api/payments/order-status/:orderId", true},
 		{"GET", "/api/payments/order-status/local_payment_1", "/api/payments/order-status/:orderId", true},
 		{"POST", "/api/wallet/products", "", false},

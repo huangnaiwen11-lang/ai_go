@@ -48,7 +48,7 @@ func newPaymentCallbackHandler(security *conf.Security, callbackPath string, use
 
 // newConfiguredPaymentCallback 只装配 Go 自有账本、订单、回执和 nonce 集合，绝不访问 Node 钱包。
 func newConfiguredPaymentCallback(dataConfig *conf.Data, security *conf.Security) (http.Handler, func(), error) {
-	if err := conf.ValidateLocalMongo(dataConfig); err != nil {
+	if err := conf.ValidateConfiguredMongo(dataConfig); err != nil {
 		return nil, nil, err
 	}
 	storage, cleanup, err := data.NewData(dataConfig)

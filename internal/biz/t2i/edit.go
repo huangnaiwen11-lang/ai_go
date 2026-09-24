@@ -108,12 +108,21 @@ type ImageEditCommand struct {
 // ImageEditUsecase 读取模板并复用已有的预扣、账本和 Outbox 事务创建图片编辑任务。
 type ImageEditUsecase struct {
 	recipes   ImageEditRecipeReader
+	products  creations.B2BProductRecipeReader
 	creations reservedCreator
 	images    OwnedImageReader
 }
 
 func NewImageEditUsecase(recipes ImageEditRecipeReader, creator reservedCreator, images OwnedImageReader) *ImageEditUsecase {
 	return &ImageEditUsecase{recipes: recipes, creations: creator, images: images}
+}
+
+// NewImageEditUsecaseWithB2BProductRecipes selects published public-product
+// compilation. The legacy recipe reader remains only the authority for visible
+// template identity/version and content access; its execution.v2 fields are
+// never copied into a B2B submission.
+func NewImageEditUsecaseWithB2BProductRecipes(recipes ImageEditRecipeReader, products creations.B2BProductRecipeReader, creator reservedCreator, images OwnedImageReader) *ImageEditUsecase {
+	return &ImageEditUsecase{recipes: recipes, products: products, creations: creator, images: images}
 }
 
 func (usecase *ImageEditUsecase) Create(ctx context.Context, command ImageEditCommand) (*creations.CreateReservedResult, error) {
@@ -128,10 +137,54 @@ func (usecase *ImageEditUsecase) Create(ctx context.Context, command ImageEditCo
 	if err != nil {
 		return nil, err
 	}
+	request := creations.CreateReservedRequest{
+		UserID:          command.UserID,
+		IdempotencyKey:  command.IdempotencyKey,
+		TemplateID:      recipe.TemplateID,
+		TemplateVersion: recipe.Version,
+		Product:         entitlement.GenerationRequest{Output: entitlement.ProductOutputImage},
+		Plan:            []creations.StepPlan{{Sequence: 1, Atom: creations.AtomImageEdit}},
+	}
+	if usecase.products != nil {
+		product, err := usecase.products.LoadB2BProductRecipe(ctx, recipe.TemplateID, recipe.Version, creations.AtomImageEdit)
+		if err != nil {
+			return nil, err
+		}
+		product, err = product.Normalize()
+		if err != nil || product.TemplateID != recipe.TemplateID || product.TemplateVersion != recipe.Version || product.Atom != creations.AtomImageEdit {
+			return nil, creations.ErrB2BProductRecipeUnavailable
+		}
+		compiled, err := product.CompileB2BProductRecipe(imageEditB2BOverrides(command.UserPrompt, command.AspectRatio), []creations.B2BAsset{{Role: "source_image", URL: ownedImageURL}})
+		if err != nil {
+			return nil, err
+		}
+		digest, err := compiled.Digest()
+		if err != nil {
+			return nil, creations.ErrB2BProductRecipeUnavailable
+		}
+		request.InputDigest = digest
+		request.B2BSubmission = &compiled
+		return usecase.creations.CreateReserved(ctx, request)
+	}
 	compiled, err := CompileImageEdit(recipe, ImageEditInput{UserImageURL: ownedImageURL, UserPrompt: command.UserPrompt, AspectRatio: command.AspectRatio})
 	if err != nil {
 		return nil, err
 	}
 	digest := sha256.Sum256(compiled.InitialSubmission.Input)
-	return usecase.creations.CreateReserved(ctx, creations.CreateReservedRequest{UserID: command.UserID, IdempotencyKey: command.IdempotencyKey, TemplateID: compiled.TemplateID, TemplateVersion: compiled.TemplateVersion, Product: entitlement.GenerationRequest{Output: entitlement.ProductOutputImage}, InputDigest: hex.EncodeToString(digest[:]), Plan: compiled.Plan, InitialSubmission: compiled.InitialSubmission})
+	request.InputDigest = hex.EncodeToString(digest[:])
+	request.InitialSubmission = compiled.InitialSubmission
+	return usecase.creations.CreateReserved(ctx, request)
+}
+
+func imageEditB2BOverrides(userPrompt, aspectRatio string) map[string]json.RawMessage {
+	overrides := make(map[string]json.RawMessage, 2)
+	if prompt := strings.TrimSpace(userPrompt); prompt != "" {
+		encoded, _ := json.Marshal(prompt)
+		overrides["prompt"] = encoded
+	}
+	if ratio := strings.TrimSpace(aspectRatio); ratio != "" {
+		encoded, _ := json.Marshal(ratio)
+		overrides["aspectRatio"] = encoded
+	}
+	return overrides
 }

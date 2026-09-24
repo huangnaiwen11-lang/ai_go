@@ -38,10 +38,22 @@ var expectedCollectionNames = []string{
 	"payment_receipts",
 	"payment_callback_nonces",
 	"callback_receipts",
+	"generation_provider_inbox",
+	"generation_product_recipes",
+	"generation_model_mappings",
 	"outbox_events",
 	"feedbacks",
 	"notifications",
 	"notification_preferences",
+	"admin_audit",
+	"blog_posts",
+	"utmlinks",
+	"admin_menu_visibility",
+	"apps",
+	"platform_configs",
+	"admin_pricing_configs",
+	"admin_review_items",
+	"admin_review_projection_state",
 }
 
 var expectedIndexSpecs = []struct {
@@ -52,6 +64,8 @@ var expectedIndexSpecs = []struct {
 	sparse             bool
 	expireAfterSeconds *int32
 }{
+	{collection: "credentials", name: "ix_credentials_user_active", keys: bson.D{{Key: "user_id", Value: int32(1)}, {Key: "active", Value: int32(1)}}},
+	{collection: "identities", name: "ix_identities_user", keys: bson.D{{Key: "user_id", Value: int32(1)}}},
 	{collection: "identities", name: "ux_identities_provider_subject", keys: bson.D{{Key: "provider", Value: int32(1)}, {Key: "subject", Value: int32(1)}}, unique: true},
 	{collection: "sessions", name: "ix_sessions_user_revoked", keys: bson.D{{Key: "user_id", Value: int32(1)}, {Key: "revoked_at", Value: int32(1)}}},
 	{collection: "credentials", name: "ux_credentials_active_email", keys: bson.D{{Key: "email_normalized", Value: int32(1)}}, unique: true},
@@ -59,12 +73,13 @@ var expectedIndexSpecs = []struct {
 	{collection: "templates", name: "ux_templates_template_version", keys: bson.D{{Key: "template_id", Value: int32(1)}, {Key: "version", Value: int32(1)}}, unique: true},
 	{collection: "templates", name: "ix_templates_enabled_surface_sort", keys: bson.D{{Key: "enabled", Value: int32(1)}, {Key: "content_surface", Value: int32(1)}, {Key: "sort_order", Value: int32(1)}}},
 	{collection: "assets", name: "ix_assets_owner_created", keys: bson.D{{Key: "owner_type", Value: int32(1)}, {Key: "owner_id", Value: int32(1)}, {Key: "created_at", Value: int32(-1)}}},
+	{collection: "assets", name: "ix_assets_storage_key_owner_status", keys: bson.D{{Key: "storage_key", Value: int32(1)}, {Key: "owner_type", Value: int32(1)}, {Key: "status", Value: int32(1)}}},
 	{collection: "creations", name: "ux_creations_idempotency_key", keys: bson.D{{Key: "idempotency_key", Value: int32(1)}}, unique: true},
 	{collection: "creations", name: "ix_creations_user_created", keys: bson.D{{Key: "user_id", Value: int32(1)}, {Key: "created_at", Value: int32(-1)}}},
 	{collection: "creations", name: "ix_creations_user_output_created_id", keys: bson.D{{Key: "user_id", Value: int32(1)}, {Key: "product_output", Value: int32(1)}, {Key: "created_at", Value: int32(-1)}, {Key: "_id", Value: int32(-1)}}},
 	{collection: "creation_steps", name: "ux_creation_steps_creation_sequence", keys: bson.D{{Key: "creation_id", Value: int32(1)}, {Key: "sequence", Value: int32(1)}}, unique: true},
 	{collection: "creation_steps", name: "ix_creation_steps_external_execution", keys: bson.D{{Key: "external_execution_id", Value: int32(1)}}},
-	{collection: "creation_steps", name: "ux_creation_steps_external_execution_present", keys: bson.D{{Key: "external_execution_id", Value: int32(1)}}, unique: true, sparse: true},
+	{collection: "creation_steps", name: "ux_creation_steps_provider_account_external_execution_present", keys: bson.D{{Key: "provider", Value: int32(1)}, {Key: "account_ref", Value: int32(1)}, {Key: "external_execution_id", Value: int32(1)}}, unique: true},
 	{collection: "generation_step_recipes", name: "ux_generation_step_recipes_step_id", keys: bson.D{{Key: "step_id", Value: int32(1)}}, unique: true},
 	{collection: "reservations", name: "ux_reservations_creation_id", keys: bson.D{{Key: "creation_id", Value: int32(1)}}, unique: true},
 	{collection: "daily_quotas", name: "ux_daily_quotas_user_kind_date", keys: bson.D{{Key: "user_id", Value: int32(1)}, {Key: "quota_kind", Value: int32(1)}, {Key: "local_date", Value: int32(1)}}, unique: true},
@@ -78,9 +93,46 @@ var expectedIndexSpecs = []struct {
 	{collection: "payment_callback_nonces", name: "ix_payment_callback_nonces_expires_at_ttl", keys: bson.D{{Key: "expires_at", Value: int32(1)}}, expireAfterSeconds: int32Pointer(0)},
 	{collection: "callback_receipts", name: "ux_callback_receipts_source_nonce_hash", keys: bson.D{{Key: "source", Value: int32(1)}, {Key: "nonce_hash", Value: int32(1)}}, unique: true},
 	{collection: "callback_receipts", name: "ix_callback_receipts_step_terminal", keys: bson.D{{Key: "source", Value: int32(1)}, {Key: "step_id", Value: int32(1)}, {Key: "job_id", Value: int32(1)}, {Key: "capability", Value: int32(1)}, {Key: "terminal", Value: int32(1)}}},
+	{collection: "generation_provider_inbox", name: "ux_generation_provider_inbox_source_account_delivery", keys: bson.D{{Key: "source", Value: int32(1)}, {Key: "account_ref", Value: int32(1)}, {Key: "delivery_id", Value: int32(1)}}, unique: true},
+	{collection: "generation_provider_inbox", name: "ix_generation_provider_inbox_step_status_updated", keys: bson.D{{Key: "step_id", Value: int32(1)}, {Key: "status", Value: int32(1)}, {Key: "updated_at", Value: int32(-1)}}},
+	{collection: "generation_product_recipes", name: "ux_generation_product_recipes_template_version_atom", keys: bson.D{{Key: "template_id", Value: int32(1)}, {Key: "template_version", Value: int32(1)}, {Key: "atom", Value: int32(1)}}, unique: true},
+	{collection: "generation_model_mappings", name: "ix_generation_model_mappings_status_published_at", keys: bson.D{{Key: "status", Value: int32(1)}, {Key: "published_at", Value: int32(-1)}}},
 	{collection: "outbox_events", name: "ix_outbox_events_status_next_attempt", keys: bson.D{{Key: "delivery_status", Value: int32(1)}, {Key: "next_attempt_at", Value: int32(1)}}},
 	{collection: "outbox_events", name: "ix_outbox_events_claim_type_status_next_attempt_lease_until", keys: bson.D{{Key: "event_type", Value: int32(1)}, {Key: "delivery_status", Value: int32(1)}, {Key: "next_attempt_at", Value: int32(1)}, {Key: "lease_until", Value: int32(1)}}},
 	{collection: "notifications", name: "ix_notifications_user_read_created", keys: bson.D{{Key: "user_id", Value: int32(1)}, {Key: "read", Value: int32(1)}, {Key: "created_at", Value: int32(-1)}}},
+	{collection: "blog_posts", name: "ux_blog_posts_slug", keys: bson.D{{Key: "slug", Value: int32(1)}}, unique: true},
+	{collection: "blog_posts", name: "ix_blog_posts_status_created", keys: bson.D{{Key: "status", Value: int32(1)}, {Key: "created_at", Value: int32(-1)}}},
+	{collection: "utmlinks", name: "ux_utmlinks_slug", keys: bson.D{{Key: "slug", Value: int32(1)}}, unique: true},
+	{collection: "utmlinks", name: "ix_utmlinks_enabled_created", keys: bson.D{{Key: "enabled", Value: int32(1)}, {Key: "createdAt", Value: int32(-1)}}},
+	{
+		collection: "apps",
+		name:       "uniq_android_native_identifiers",
+		keys:       bson.D{{Key: "nativeIdentifiers", Value: int32(1)}},
+		unique:     true,
+	},
+	{
+		collection: "platform_configs",
+		name:       "ux_platform_configs_platform_client",
+		keys:       bson.D{{Key: "platform", Value: int32(1)}, {Key: "clientId", Value: int32(1)}},
+		unique:     true,
+	},
+	{
+		collection: "admin_pricing_configs",
+		name:       "ux_admin_pricing_configs_key_environment",
+		keys:       bson.D{{Key: "key", Value: int32(1)}, {Key: "environment", Value: int32(1)}},
+		unique:     true,
+	},
+	{
+		collection: "admin_review_items",
+		name:       "ix_admin_review_items_media_status_created",
+		keys:       bson.D{{Key: "media_type", Value: int32(1)}, {Key: "review_status", Value: int32(1)}, {Key: "created_at", Value: int32(-1)}, {Key: "_id", Value: int32(-1)}},
+	},
+	{
+		collection: "admin_review_items",
+		name:       "ux_admin_review_items_source_legacy",
+		keys:       bson.D{{Key: "source", Value: int32(1)}, {Key: "legacy_source_id", Value: int32(1)}},
+		unique:     true,
+	},
 }
 
 // 固定验收清单必须覆盖全部声明；无数据库时也执行，避免集成测试跳过后掩盖清单漂移。
@@ -219,6 +271,10 @@ func TestEnsureCreatesAllDeclaredIndexes(t *testing.T) {
 			if !reflect.DeepEqual(actual.ExpireAfterSeconds, expected.expireAfterSeconds) {
 				t.Errorf("索引 %q expireAfterSeconds = %#v, want %#v", expected.name, actual.ExpireAfterSeconds, expected.expireAfterSeconds)
 			}
+			// 部分过滤条件不在这里断言：驱动 v2 的 mongo.IndexSpecification
+			// 没有暴露 partialFilterExpression，只有 IndexView.List() 的原始文档里有。
+			// 它的效果由 internal/data 的行为用例覆盖（无标识的 App 不得互相冲突），
+			// 声明内容由 internal/data/schema 的纯单元用例覆盖。
 		})
 	}
 }
@@ -385,6 +441,85 @@ func TestUniqueIndexesRejectDuplicateBusinessFacts(t *testing.T) {
 				t.Fatalf("插入仅修改复合键字段 %q 的业务事实: %v", fact.counterexampleField, err)
 			}
 		})
+	}
+}
+
+// A provider job ID is only unique within its frozen provider/account scope.
+// Fresh databases must therefore admit the same external ID for independent
+// accounts while rejecting an exact scoped duplicate. The legacy global unique
+// index cannot satisfy this contract.
+func TestCreationStepExecutionIDUniqueWithinProviderAccountScope(t *testing.T) {
+	database := newLocalTestDatabase(t)
+	ensureLocalSchema(t, database)
+	collection := database.Collection(schema.CollectionCreationSteps)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	first := bson.D{{Key: "_id", Value: uuid.NewString()}, {Key: "creation_id", Value: uuid.NewString()}, {Key: "sequence", Value: 1}, {Key: "provider", Value: "polarstar_b2b_v2"}, {Key: "account_ref", Value: "account-a"}, {Key: "external_execution_id", Value: "job-shared"}}
+	if _, err := collection.InsertOne(ctx, first); err != nil {
+		t.Fatalf("insert first scoped job: %v", err)
+	}
+	otherAccount := bson.D{{Key: "_id", Value: uuid.NewString()}, {Key: "creation_id", Value: uuid.NewString()}, {Key: "sequence", Value: 1}, {Key: "provider", Value: "polarstar_b2b_v2"}, {Key: "account_ref", Value: "account-b"}, {Key: "external_execution_id", Value: "job-shared"}}
+	if _, err := collection.InsertOne(ctx, otherAccount); err != nil {
+		t.Fatalf("same job in another account rejected: %v", err)
+	}
+	exactDuplicate := bson.D{{Key: "_id", Value: uuid.NewString()}, {Key: "creation_id", Value: uuid.NewString()}, {Key: "sequence", Value: 1}, {Key: "provider", Value: "polarstar_b2b_v2"}, {Key: "account_ref", Value: "account-a"}, {Key: "external_execution_id", Value: "job-shared"}}
+	if _, err := collection.InsertOne(ctx, exactDuplicate); !mongo.IsDuplicateKeyError(err) {
+		t.Fatalf("same scoped job error = %v, want duplicate key", err)
+	}
+}
+
+// TestAppsNativeIdentifierIndexIsPartial 验证 uniq_android_native_identifiers 的部分过滤
+// 条件真的落到了数据库上。
+//
+// 为什么用行为断言而不是读索引定义：驱动 v2 的 mongo.IndexSpecification 没有暴露
+// partialFilterExpression，只有 IndexView.List() 的原始文档里有。但这条过滤条件的
+// 后果完全可观测，而且比定义本身更值得钉住 —— 少了它，唯一索引会把「没有原生标识的
+// App」（nativeIdentifiers 缺失 -> 索引键为 null）判成互相冲突，第二个 web App
+// 从此永远建不出来，而报错只会说「标识已注册」。
+func TestAppsNativeIdentifierIndexIsPartial(t *testing.T) {
+	database := newLocalTestDatabase(t)
+	ensureLocalSchema(t, database)
+
+	collection := database.Collection(schema.CollectionApps)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	insertApp := func(id string, fields bson.D) error {
+		document := append(bson.D{{Key: "_id", Value: id}}, fields...)
+		_, err := collection.InsertOne(ctx, document)
+		return err
+	}
+
+	// 情形一：字段整个缺失（web App 的常态）。
+	missing := []string{"test-app-web-a-" + uuid.NewString(), "test-app-web-b-" + uuid.NewString()}
+	cleanupDocumentsByID(t, collection, bson.A{missing[0], missing[1]})
+	for index, id := range missing {
+		if err := insertApp(id, bson.D{{Key: "platform", Value: "web"}}); err != nil {
+			t.Fatalf("插入第 %d 个缺失 nativeIdentifiers 的 App: %v", index+1, err)
+		}
+	}
+
+	// 情形二：字段存在但为空数组。仓储层会 $unset 而不是写空数组，
+	// 但 Node 侧可能写出 []，所以这条过滤条件的边界要一并钉住。
+	empty := []string{"test-app-empty-a-" + uuid.NewString(), "test-app-empty-b-" + uuid.NewString()}
+	cleanupDocumentsByID(t, collection, bson.A{empty[0], empty[1]})
+	for index, id := range empty {
+		if err := insertApp(id, bson.D{{Key: "platform", Value: "android"}, {Key: "nativeIdentifiers", Value: bson.A{}}}); err != nil {
+			t.Fatalf("插入第 %d 个 nativeIdentifiers 为空数组的 App: %v", index+1, err)
+		}
+	}
+
+	// 情形三：标识真的重复时必须被拦下 —— 否则这个索引就白建了。
+	shared := "com.example.shared-" + uuid.NewString()
+	first, second := "test-app-android-a-"+uuid.NewString(), "test-app-android-b-"+uuid.NewString()
+	cleanupDocumentsByID(t, collection, bson.A{first, second})
+	identifiers := bson.D{{Key: "platform", Value: "android"}, {Key: "nativeIdentifiers", Value: bson.A{shared}}}
+	if err := insertApp(first, identifiers); err != nil {
+		t.Fatalf("插入第一个带原生标识的 App: %v", err)
+	}
+	if err := insertApp(second, identifiers); !mongo.IsDuplicateKeyError(err) {
+		t.Fatalf("插入重复原生标识的 App error = %v, want duplicate key error", err)
 	}
 }
 

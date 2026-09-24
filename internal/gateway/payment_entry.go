@@ -9,6 +9,7 @@ const (
 	localCheckoutPath       = "/api/wallet/create-external-checkout"
 	localVerifyPurchasePath = "/api/wallet/verify-purchase"
 	localProductsPath       = "/api/wallet/products"
+	localPaymentMethodsPath = "/api/wallet/external-payment-methods"
 	localOrderStatusRoute   = "/api/payments/order-status/:orderId"
 )
 
@@ -21,7 +22,7 @@ func matchesPaymentEntry(request *http.Request) bool {
 		return false
 	}
 	if request.Method == http.MethodGet {
-		return request.URL.Path == localProductsPath || localOrderStatusPath.MatchString(request.URL.Path)
+		return request.URL.Path == localProductsPath || request.URL.Path == localPaymentMethodsPath || localOrderStatusPath.MatchString(request.URL.Path)
 	}
 	return request.Method == http.MethodPost && (request.URL.Path == localCheckoutPath || request.URL.Path == localVerifyPurchasePath)
 }
@@ -29,6 +30,9 @@ func matchesPaymentEntry(request *http.Request) bool {
 func paymentEntryRouteKey(path string) exactRouteKey {
 	if path == localProductsPath {
 		return exactRouteKey{method: http.MethodGet, path: localProductsPath}
+	}
+	if path == localPaymentMethodsPath {
+		return exactRouteKey{method: http.MethodGet, path: localPaymentMethodsPath}
 	}
 	if localOrderStatusPath.MatchString(path) {
 		return exactRouteKey{method: http.MethodGet, path: localOrderStatusRoute}

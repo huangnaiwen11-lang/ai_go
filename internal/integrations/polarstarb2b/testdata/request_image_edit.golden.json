@@ -1,0 +1,1 @@
+{"externalId":"step-1","idempotencyKey":"cling-step:step-1","capability":"image_edit","model":"ps-auto","templateId":"public-portrait","input":{"imageUrl":"https://assets.example.com/source.png"},"callbackUrl":null,"callbackPolicy":"disabled","resultUrlPolicy":"permanent"}

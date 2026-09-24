@@ -3,9 +3,11 @@ package payments
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -79,13 +81,53 @@ type CheckoutRepository interface {
 // PayCoresCheckoutRequest 是 Go 领域交给外部建单适配器的受控事实。
 // 适配器不得向其中追加余额、VIP、Node 用户资料或客户端价格。
 type PayCoresCheckoutRequest struct {
-	UserID          string
-	ProductID       string
-	AmountCents     int64
-	Currency        string
-	Credits         int64
-	Label           string
-	ClientRequestID string
+	UserID               string
+	ProductID            string
+	AmountCents          int64
+	Currency             string
+	Credits              int64
+	Label                string
+	ClientRequestID      string
+	Provider             string
+	Account              string
+	ClientDevicePlatform string
+}
+
+// PaymentChannelSelection is the user-visible PayCores channel selected by
+// the Web checkout. Provider/account are opaque identifiers owned by PayCores;
+// the client cannot alter price or credits through them.
+type PaymentChannelSelection struct {
+	Provider             string
+	Account              string
+	ClientDevicePlatform string
+	ClientRequestID      string
+}
+
+func (selection PaymentChannelSelection) Validate() error {
+	provider := strings.TrimSpace(selection.Provider)
+	account := strings.ToLower(strings.TrimSpace(selection.Account))
+	platform := strings.ToLower(strings.TrimSpace(selection.ClientDevicePlatform))
+	if provider == "" {
+		if account != "" {
+			return ErrInvalidPaymentOrder
+		}
+		return nil
+	}
+	if platform == "" {
+		platform = "web"
+	}
+	if strings.HasSuffix(account, "_googlepay") && platform != "web" && platform != "android" {
+		return ErrInvalidPaymentOrder
+	}
+	if strings.HasSuffix(account, "_applepay") && platform != "ios" {
+		return ErrInvalidPaymentOrder
+	}
+	if requestID := strings.TrimSpace(selection.ClientRequestID); requestID != "" {
+		if len(requestID) > 128 || strings.IndexFunc(requestID, func(r rune) bool { return r < 0x21 || r > 0x7e }) >= 0 {
+			return ErrInvalidPaymentOrder
+		}
+	}
+	return nil
 }
 
 // PayCoresCheckoutResult 是外部建单成功后的最小可信响应。
@@ -118,6 +160,10 @@ type CheckoutService struct {
 // CreatePendingPayCoresOrder 为本地收银台测试创建待确认的 Go 自有订单。
 // 它只冻结服务端商品，不调用 PayCores，也不把客户端金额、钻石或渠道参数写入订单。
 func (service *CheckoutService) CreatePendingPayCoresOrder(ctx context.Context, userID, productID string) (*PaymentOrder, error) {
+	return service.createPendingPayCoresOrder(ctx, userID, productID, "")
+}
+
+func (service *CheckoutService) createPendingPayCoresOrder(ctx context.Context, userID, productID, clientRequestID string) (*PaymentOrder, error) {
 	if service == nil || service.repository == nil || service.newOrderID == nil || blank(userID) || blank(productID) {
 		return nil, ErrInvalidPaymentOrder
 	}
@@ -130,9 +176,14 @@ func (service *CheckoutService) CreatePendingPayCoresOrder(ctx context.Context, 
 		if product == nil {
 			return ErrProductNotPublished
 		}
-		orderID, err := service.newOrderID()
-		if err != nil {
-			return fmt.Errorf("create local PayCores payment order id: %w", err)
+		orderID := ""
+		if strings.TrimSpace(clientRequestID) != "" {
+			orderID = clientPaymentOrderID(userID, productID, clientRequestID)
+		} else {
+			orderID, err = service.newOrderID()
+			if err != nil {
+				return fmt.Errorf("create local PayCores payment order id: %w", err)
+			}
 		}
 		order, err := FreezeOrder(CreateOrderInput{
 			OrderID:         orderID,
@@ -150,6 +201,15 @@ func (service *CheckoutService) CreatePendingPayCoresOrder(ctx context.Context, 
 		return nil
 	})
 	if err != nil {
+		if errors.Is(err, ErrPaymentOrderAlreadyExists) && strings.TrimSpace(clientRequestID) != "" {
+			existing, lookupErr := service.repository.FindOrder(ctx, clientPaymentOrderID(userID, productID, clientRequestID))
+			if lookupErr != nil {
+				return nil, lookupErr
+			}
+			if existing != nil && existing.UserID == userID && existing.ProductID == productID && existing.Provider == ProviderPayCores {
+				return existing, nil
+			}
+		}
 		return nil, err
 	}
 	return created, nil
@@ -178,10 +238,19 @@ func NewCheckoutServiceWithPayCores(repository CheckoutRepository, creator PayCo
 // CreatePayCoresCheckout 先冻结 Go 自有订单，再请求 PayCores，最后原子绑定渠道订单号。
 // 请求失败不会入账；回调只会按已绑定订单的本地快照结算，绝不采信对方传回的金额或 credits。
 func (service *CheckoutService) CreatePayCoresCheckout(ctx context.Context, userID, productID string) (PayCoresCheckout, error) {
+	return service.CreatePayCoresCheckoutForChannel(ctx, userID, productID, PaymentChannelSelection{ClientDevicePlatform: "web"})
+}
+
+// CreatePayCoresCheckoutForChannel creates the same frozen order while
+// preserving the selected PayCores provider/account for routing.
+func (service *CheckoutService) CreatePayCoresCheckoutForChannel(ctx context.Context, userID, productID string, selection PaymentChannelSelection) (PayCoresCheckout, error) {
 	if service == nil || service.paycores == nil {
 		return PayCoresCheckout{}, ErrDependenciesUnavailable
 	}
-	order, err := service.CreatePendingPayCoresOrder(ctx, userID, productID)
+	if err := selection.Validate(); err != nil {
+		return PayCoresCheckout{}, err
+	}
+	order, err := service.createPendingPayCoresOrder(ctx, userID, productID, selection.ClientRequestID)
 	if err != nil {
 		return PayCoresCheckout{}, err
 	}
@@ -195,9 +264,21 @@ func (service *CheckoutService) CreatePayCoresCheckout(ctx context.Context, user
 	if product == nil {
 		return PayCoresCheckout{}, ErrInvalidPaymentOrder
 	}
+	channel := selection
+	if strings.TrimSpace(channel.ClientDevicePlatform) == "" {
+		channel.ClientDevicePlatform = "web"
+	}
+	if err := channel.Validate(); err != nil {
+		return PayCoresCheckout{}, err
+	}
+	orderClientRequestID := strings.TrimSpace(channel.ClientRequestID)
+	if orderClientRequestID == "" {
+		orderClientRequestID = order.ID
+	}
 	response, err := service.paycores.CreatePayCoresOrder(ctx, PayCoresCheckoutRequest{
 		UserID: userID, ProductID: order.ProductID, AmountCents: order.AmountCents, Currency: order.Currency,
-		Credits: order.DiamondAmount, Label: product.Label, ClientRequestID: order.ID,
+		Credits: order.DiamondAmount, Label: product.Label, ClientRequestID: orderClientRequestID,
+		Provider: channel.Provider, Account: channel.Account, ClientDevicePlatform: channel.ClientDevicePlatform,
 	})
 	if err != nil {
 		return PayCoresCheckout{}, err
@@ -205,12 +286,27 @@ func (service *CheckoutService) CreatePayCoresCheckout(ctx context.Context, user
 	if blank(response.ProviderOrderID) || blank(response.CheckoutURL) {
 		return PayCoresCheckout{}, ErrInvalidPaymentOrder
 	}
+	if order.ProviderOrderID != "local-paycores-"+order.ID {
+		if order.ProviderOrderID != response.ProviderOrderID {
+			return PayCoresCheckout{}, ErrPaymentOrderMismatch
+		}
+		order.UpdatedAt = service.now().UTC()
+		return PayCoresCheckout{Order: order, CheckoutURL: response.CheckoutURL}, nil
+	}
 	bound, err := service.repository.BindPayCoresProviderOrder(ctx, order.ID, order.ProviderOrderID, response.ProviderOrderID, service.now())
 	if err != nil {
 		return PayCoresCheckout{}, err
 	}
 	if !bound {
-		return PayCoresCheckout{}, ErrPaymentOrderMismatch
+		// 同一幂等请求可能已由并发调用完成绑定；只允许完全相同的渠道订单和冻结快照收敛成功。
+		current, lookupErr := service.repository.FindOrder(ctx, order.ID)
+		if lookupErr != nil {
+			return PayCoresCheckout{}, lookupErr
+		}
+		if current == nil || current.ID != order.ID || current.UserID != order.UserID || current.Provider != order.Provider || current.ProviderOrderID != response.ProviderOrderID || current.ProductID != order.ProductID || current.ProductVersion != order.ProductVersion || current.DiamondAmount != order.DiamondAmount || current.AmountCents != order.AmountCents || current.Currency != order.Currency || (current.Status != PaymentOrderStatusPending && current.Status != PaymentOrderStatusPaid) {
+			return PayCoresCheckout{}, ErrPaymentOrderMismatch
+		}
+		return PayCoresCheckout{Order: current, CheckoutURL: response.CheckoutURL}, nil
 	}
 	order.ProviderOrderID = response.ProviderOrderID
 	order.UpdatedAt = service.now().UTC()
@@ -302,4 +398,9 @@ func randomCheckoutOrderID() (string, error) {
 		return "", err
 	}
 	return "local-payment-" + hex.EncodeToString(bytes), nil
+}
+
+func clientPaymentOrderID(userID, productID, clientRequestID string) string {
+	digest := sha256.Sum256([]byte(userID + "\x00" + productID + "\x00" + strings.TrimSpace(clientRequestID)))
+	return "client-payment-" + hex.EncodeToString(digest[:])
 }

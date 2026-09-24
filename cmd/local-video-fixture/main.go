@@ -176,11 +176,13 @@ func newSFWVideoTemplate(templateID string, now time.Time) model.TemplateDocumen
 		Mode:           string(catalog.ProductModeTemplateVideo),
 		Enabled:        true,
 		// 仅供隔离本地验收使用的公开展示元数据；技术配方仍完全留在 Parameters 中。
-		Title:      "本地五秒视频模板",
-		CoverURL:   "/legacy/images/homepage/lux-hotel-walk-wide.webp",
-		Parameters: parameters,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		Title:           "本地五秒视频模板",
+		CoverURL:        "/legacy/templates/covers/bridge-tile-1.jpg",
+		VideoURL:        "/legacy/templates/videos/bridge-tile-1.mp4",
+		PreviewVideoURL: "/legacy/templates/videos/bridge-tile-1.mp4",
+		Parameters:      parameters,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 }
 

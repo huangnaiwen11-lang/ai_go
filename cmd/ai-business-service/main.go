@@ -102,6 +102,12 @@ func main() {
 	if err := c.Scan(&bc); err != nil {
 		panic(err)
 	}
+	if err := conf.ApplyMongoEnvironmentOverrides(&bc, os.Getenv); err != nil {
+		panic(err)
+	}
+	if err := conf.ApplyPolarStarB2BEnvironmentOverrides(&bc, os.Getenv); err != nil {
+		panic(err)
+	}
 	if err := conf.Validate(&bc); err != nil {
 		panic(err)
 	}

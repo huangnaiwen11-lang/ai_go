@@ -240,6 +240,17 @@ func writeSuccess(writer http.ResponseWriter, status int, data any) {
 	_ = json.NewEncoder(writer).Encode(map[string]any{"success": true, "data": data})
 }
 func writeError(writer http.ResponseWriter, err error) {
+	var contract interface {
+		error
+		StatusCode() int
+		Code() string
+		Message() string
+		Details() any
+	}
+	if errors.As(err, &contract) {
+		writeClientError(writer, contract.StatusCode(), contract.Code(), contract.Message())
+		return
+	}
 	var apiError *shared.APIError
 	if errors.As(err, &apiError) {
 		writeClientError(writer, apiError.StatusCode(), apiError.Code(), apiError.Message())

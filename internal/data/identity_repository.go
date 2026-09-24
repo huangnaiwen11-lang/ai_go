@@ -303,7 +303,7 @@ func newIdentityDocument(externalIdentity identity.ExternalIdentity) model.Ident
 }
 
 func newUserDocument(user identity.User) model.UserDocument {
-	return model.UserDocument{ID: user.ID, DisplayName: user.DisplayName, Bio: user.Bio, AvatarImageID: user.AvatarImageID, AccountStatus: string(user.AccountStatus), BindingState: string(user.BindingState), Timezone: user.Timezone, GuestPlatform: user.GuestPlatform, GuestDeviceID: user.GuestDeviceID, SessionVersion: user.SessionVersion, ContentAccess: user.ContentAccess, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt}
+	return model.UserDocument{ID: user.ID, DisplayName: user.DisplayName, Bio: user.Bio, AvatarImageID: user.AvatarImageID, AccountStatus: string(user.AccountStatus), BindingState: string(user.BindingState), Role: user.Role, Timezone: user.Timezone, GuestPlatform: user.GuestPlatform, GuestDeviceID: user.GuestDeviceID, SessionVersion: user.SessionVersion, ContentAccess: user.ContentAccess, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt}
 }
 
 func newSessionDocument(session identity.Session) model.SessionDocument {
@@ -322,6 +322,7 @@ func toBizUser(document model.UserDocument) *identity.User {
 		AvatarImageID:  document.AvatarImageID,
 		AccountStatus:  identity.AccountStatus(document.AccountStatus),
 		BindingState:   identity.BindingState(document.BindingState),
+		Role:           document.Role,
 		Timezone:       document.Timezone,
 		GuestPlatform:  document.GuestPlatform,
 		GuestDeviceID:  document.GuestDeviceID,

@@ -20,7 +20,7 @@ func newOptionalNotificationHandler(enabled bool, configPath string, authenticat
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := conf.ValidateLocalMongo(bootstrap.GetData()); err != nil {
+	if err := conf.ValidateConfiguredMongo(bootstrap.GetData()); err != nil {
 		return nil, nil, err
 	}
 	storage, cleanup, err := data.NewData(bootstrap.GetData())
@@ -29,4 +29,3 @@ func newOptionalNotificationHandler(enabled bool, configPath string, authenticat
 	}
 	return transportnotification.NewHandler(authenticator, biznotification.NewUsecase(data.NewNotificationRepository(storage))), cleanup, nil
 }
-

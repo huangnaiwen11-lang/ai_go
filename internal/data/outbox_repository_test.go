@@ -2,6 +2,7 @@ package data
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"strings"
 	"sync"
@@ -16,6 +17,10 @@ import (
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
+
+type outboxLeaseRenewer interface {
+	RenewLease(context.Context, string, string, time.Time, time.Time) error
+}
 
 func TestMongoOutbox保留原始JSON载荷字节(t *testing.T) {
 	client := newLocalMongoClient(t)
@@ -53,6 +58,359 @@ func TestMongoOutbox保留原始JSON载荷字节(t *testing.T) {
 	}
 	if !bytes.Equal(claimed.Payload, payload) {
 		t.Fatal("Claim() 未保留原始 JSON 载荷字节")
+	}
+}
+
+func TestMongoOutbox续租只延展活跃匹配租约且保留冻结事实(t *testing.T) {
+	client := newLocalMongoClient(t)
+	database := client.Database("cling_main")
+	ctx, cancel := newMongoTestContext()
+	defer cancel()
+	if err := migrate.NewInitializer(database).Ensure(ctx); err != nil {
+		t.Fatalf("初始化本地 schema: %v", err)
+	}
+
+	repository := NewOutboxRepository(&Data{client: client, database: database})
+	renewer, ok := repository.(outboxLeaseRenewer)
+	if !ok {
+		t.Fatal("outbox repository does not expose lease renewal")
+	}
+	now := time.Date(2026, time.September, 21, 10, 0, 0, 0, time.UTC)
+	eventID := outbox.SubmissionEventID("step-" + uuid.NewString())
+	payload := []byte(`{"prompt":"frozen","idempotencyKey":"cling-step:lease"}`)
+	event, err := outbox.NewPending(eventID, "creation-"+uuid.NewString(), payload, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	collection := database.Collection(schema.CollectionOutboxEvents)
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := newMongoTestContext()
+		defer cleanupCancel()
+		if _, err := collection.DeleteOne(cleanupCtx, bson.D{{Key: "_id", Value: eventID}}); err != nil {
+			t.Errorf("按测试 _id 清理发件箱事件 %q: %v", eventID, err)
+		}
+	})
+	if err := repository.Enqueue(ctx, event); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	claimed, err := repository.ClaimByIDAndType(ctx, "worker-1", eventID, outbox.EventTypeGenerationSubmission, now, now.Add(time.Minute))
+	if err != nil || claimed == nil {
+		t.Fatalf("ClaimByIDAndType() event/error = %#v / %v", claimed, err)
+	}
+
+	renewedAt := now.Add(20 * time.Second)
+	renewedUntil := now.Add(2 * time.Minute)
+	if err := renewer.RenewLease(ctx, eventID, claimed.LeaseToken, renewedAt, renewedUntil); err != nil {
+		t.Fatalf("RenewLease() error = %v", err)
+	}
+	var stored model.OutboxEventDocument
+	if err := collection.FindOne(ctx, bson.D{{Key: "_id", Value: eventID}}).Decode(&stored); err != nil {
+		t.Fatalf("读取续租事件: %v", err)
+	}
+	if string(stored.Payload) != string(payload) || stored.AttemptCount != claimed.AttemptCount || stored.LeaseToken != claimed.LeaseToken || stored.LeaseOwner != claimed.LeaseOwner || !stored.LeaseUntil.Equal(renewedUntil) || !stored.UpdatedAt.Equal(renewedAt) {
+		t.Fatalf("续租改写了冻结事实或未精确延展租约: %#v", stored)
+	}
+	if err := renewer.RenewLease(ctx, eventID, "wrong-token", renewedAt.Add(time.Second), renewedUntil.Add(time.Minute)); !errors.Is(err, outbox.ErrLeaseConflict) {
+		t.Fatalf("错误 token RenewLease() error = %v, want ErrLeaseConflict", err)
+	}
+	if err := renewer.RenewLease(ctx, eventID, claimed.LeaseToken, renewedUntil.Add(time.Second), renewedUntil.Add(2*time.Minute)); !errors.Is(err, outbox.ErrLeaseConflict) {
+		t.Fatalf("过期租约 RenewLease() error = %v, want ErrLeaseConflict", err)
+	}
+}
+
+func TestMongoOutbox重驱开启新窗口且不改写冻结事实(t *testing.T) {
+	client := newLocalMongoClient(t)
+	database := client.Database("cling_main")
+	ctx, cancel := newMongoTestContext()
+	defer cancel()
+	if err := migrate.NewInitializer(database).Ensure(ctx); err != nil {
+		t.Fatalf("初始化本地 schema: %v", err)
+	}
+
+	repository := NewOutboxRepository(&Data{client: client, database: database})
+	eventID := outbox.SubmissionEventID("step-" + uuid.NewString())
+	now := time.Date(2026, time.September, 20, 12, 0, 0, 0, time.UTC)
+	payload := []byte(`{"prompt":"冻结事实","jobId":"job-1","idempotencyKey":"cling-step:step-1"}`)
+	event, err := outbox.NewPending(eventID, "creation-"+uuid.NewString(), payload, now)
+	if err != nil {
+		t.Fatalf("NewPending() error = %v", err)
+	}
+	collection := database.Collection(schema.CollectionOutboxEvents)
+	t.Cleanup(func() {
+		cleanupContext, cleanupCancel := newMongoTestContext()
+		defer cleanupCancel()
+		if _, err := collection.DeleteOne(cleanupContext, bson.D{{Key: "_id", Value: eventID}}); err != nil {
+			t.Errorf("按测试 _id 清理发件箱事件 %q: %v", eventID, err)
+		}
+	})
+
+	if err := repository.Enqueue(ctx, event); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	claimed, err := repository.ClaimByIDAndType(ctx, "worker-1", eventID, outbox.EventTypeGenerationSubmission, now, now.Add(time.Minute))
+	if err != nil || claimed == nil {
+		t.Fatalf("ClaimByIDAndType() event/error = %#v / %v", claimed, err)
+	}
+	// 让 AttemptCount 非零，才能验证重驱窗口的基数确实是「重驱那一刻的计数」。
+	if err := repository.Requeue(ctx, eventID, claimed.LeaseToken, now); err != nil {
+		t.Fatalf("Requeue() error = %v", err)
+	}
+	claimed, err = repository.ClaimByIDAndType(ctx, "worker-1", eventID, outbox.EventTypeGenerationSubmission, now, now.Add(time.Minute))
+	if err != nil || claimed == nil {
+		t.Fatalf("第二次 ClaimByIDAndType() event/error = %#v / %v", claimed, err)
+	}
+	attentionAt := now.Add(time.Minute)
+	if err := repository.MarkNeedsAttention(ctx, eventID, claimed.LeaseToken, outbox.AttentionReasonMaterialUploadBudget, attentionAt); err != nil {
+		t.Fatalf("MarkNeedsAttention() error = %v", err)
+	}
+
+	var before model.OutboxEventDocument
+	if err := collection.FindOne(ctx, bson.D{{Key: "_id", Value: eventID}}).Decode(&before); err != nil {
+		t.Fatalf("读取重驱前事件: %v", err)
+	}
+
+	redrivenAt := attentionAt.Add(30 * time.Hour)
+	redriven, err := repository.RedriveAttention(ctx, outbox.RedriveCommand{
+		EventID: eventID, ExpectedRedriveCount: 0, ActorID: "admin-1", Reason: "provider 已恢复", Key: "ticket-42", At: redrivenAt,
+	})
+	if err != nil {
+		t.Fatalf("RedriveAttention() error = %v", err)
+	}
+	if redriven.DeliveryStatus != outbox.DeliveryStatusPending || redriven.RedriveCount != 1 {
+		t.Fatalf("重驱后事件 = %#v", redriven)
+	}
+
+	var after model.OutboxEventDocument
+	if err := collection.FindOne(ctx, bson.D{{Key: "_id", Value: eventID}}).Decode(&after); err != nil {
+		t.Fatalf("读取重驱后事件: %v", err)
+	}
+	// 冻结事实：payload、attempt_count、created_at 一律不得被重驱改写。
+	if string(after.Payload) != string(before.Payload) {
+		t.Fatalf("payload 被重驱改写:\n before=%s\n after =%s", before.Payload, after.Payload)
+	}
+	if after.AttemptCount != before.AttemptCount {
+		t.Fatalf("attempt_count 被改写: %d → %d", before.AttemptCount, after.AttemptCount)
+	}
+	if !after.CreatedAt.Equal(before.CreatedAt) {
+		t.Fatalf("created_at 被改写: %v → %v", before.CreatedAt, after.CreatedAt)
+	}
+	if after.RedriveAttemptBase != before.AttemptCount {
+		t.Fatalf("redrive_attempt_base = %d, want 重驱时的 attempt_count %d", after.RedriveAttemptBase, before.AttemptCount)
+	}
+	if !after.RedriveStartedAt.Equal(redrivenAt) || !after.NextAttemptAt.Equal(redrivenAt) || !after.UpdatedAt.Equal(redrivenAt) {
+		t.Fatalf("重驱未开启新窗口: %#v", after)
+	}
+	if after.AttentionReason != "" {
+		t.Fatalf("attention_reason 未清空: %q", after.AttentionReason)
+	}
+	if after.LeaseToken != "" || after.LeaseOwner != "" || !after.LeaseUntil.IsZero() {
+		t.Fatalf("重驱不应留下租约: %#v", after)
+	}
+
+	// 重驱的全部意义：事件必须重新可被自动路径领取。
+	reclaimed, err := repository.ClaimByIDAndType(ctx, "worker-2", eventID, outbox.EventTypeGenerationSubmission, redrivenAt, redrivenAt.Add(time.Minute))
+	if err != nil || reclaimed == nil {
+		t.Fatalf("重驱后事件不可领取: %#v / %v", reclaimed, err)
+	}
+	if err := repository.MarkNeedsAttention(ctx, eventID, reclaimed.LeaseToken, outbox.AttentionReasonEventAge, redrivenAt.Add(time.Minute)); err != nil {
+		t.Fatalf("第二次 MarkNeedsAttention() error = %v", err)
+	}
+
+	// 次数令牌已过期：操作者看到的还是 0，但库里已经是 1 → 冲突，不得静默重驱。
+	if _, err := repository.RedriveAttention(ctx, outbox.RedriveCommand{
+		EventID: eventID, ExpectedRedriveCount: 0, ActorID: "admin-1", Reason: "provider 已恢复", Key: "ticket-42", At: redrivenAt.Add(2 * time.Minute),
+	}); err != outbox.ErrRedriveConflict {
+		t.Fatalf("过期次数令牌 error = %v, want ErrRedriveConflict", err)
+	}
+
+	// 第二次重驱是合法的新请求（键因次数不同而不同），成功并到达 V1 上限。
+	if _, err := repository.RedriveAttention(ctx, outbox.RedriveCommand{
+		EventID: eventID, ExpectedRedriveCount: 1, ActorID: "admin-1", Reason: "再次确认 provider 正常", Key: "ticket-42", At: redrivenAt.Add(3 * time.Minute),
+	}); err != nil {
+		t.Fatalf("第二次 RedriveAttention() error = %v", err)
+	}
+	if err := collection.FindOne(ctx, bson.D{{Key: "_id", Value: eventID}}).Decode(&after); err != nil {
+		t.Fatalf("读取第二次重驱后事件: %v", err)
+	}
+	if after.RedriveCount != outbox.MaxRedriveCount || after.DeliveryStatus != string(outbox.DeliveryStatusPending) {
+		t.Fatalf("第二次重驱后 = %#v", after)
+	}
+
+	// 已达 V1 上限：先把事件放回 needs_attention，再验证不再可重驱。
+	reclaimed, err = repository.ClaimByIDAndType(ctx, "worker-3", eventID, outbox.EventTypeGenerationSubmission, redrivenAt.Add(5*time.Minute), redrivenAt.Add(6*time.Minute))
+	if err != nil || reclaimed == nil {
+		t.Fatalf("第三次领取失败: %#v / %v", reclaimed, err)
+	}
+	if err := repository.MarkNeedsAttention(ctx, eventID, reclaimed.LeaseToken, outbox.AttentionReasonEventAge, redrivenAt.Add(6*time.Minute)); err != nil {
+		t.Fatalf("第三次 MarkNeedsAttention() error = %v", err)
+	}
+	if _, err := repository.RedriveAttention(ctx, outbox.RedriveCommand{
+		EventID: eventID, ExpectedRedriveCount: outbox.MaxRedriveCount, ActorID: "admin-1", Reason: "第三次", Key: "ticket-43", At: redrivenAt.Add(7 * time.Minute),
+	}); err != outbox.ErrRedriveNotEligible {
+		t.Fatalf("达到上限后 error = %v, want ErrRedriveNotEligible", err)
+	}
+}
+
+func TestMongoOutbox重驱拒绝非人工关注事件(t *testing.T) {
+	client := newLocalMongoClient(t)
+	database := client.Database("cling_main")
+	ctx, cancel := newMongoTestContext()
+	defer cancel()
+	if err := migrate.NewInitializer(database).Ensure(ctx); err != nil {
+		t.Fatalf("初始化本地 schema: %v", err)
+	}
+
+	repository := NewOutboxRepository(&Data{client: client, database: database})
+	eventID := outbox.SubmissionEventID("step-" + uuid.NewString())
+	now := time.Date(2026, time.September, 20, 12, 0, 0, 0, time.UTC)
+	event, err := outbox.NewPending(eventID, "creation-"+uuid.NewString(), []byte(`{"prompt":"x"}`), now)
+	if err != nil {
+		t.Fatalf("NewPending() error = %v", err)
+	}
+	collection := database.Collection(schema.CollectionOutboxEvents)
+	t.Cleanup(func() {
+		cleanupContext, cleanupCancel := newMongoTestContext()
+		defer cleanupCancel()
+		if _, err := collection.DeleteOne(cleanupContext, bson.D{{Key: "_id", Value: eventID}}); err != nil {
+			t.Errorf("按测试 _id 清理发件箱事件 %q: %v", eventID, err)
+		}
+	})
+	if err := repository.Enqueue(ctx, event); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+
+	// pending 事件仍被自动路径持有：重驱它等于抢占，必须拒绝。
+	if _, err := repository.RedriveAttention(ctx, outbox.RedriveCommand{
+		EventID: eventID, ExpectedRedriveCount: 0, ActorID: "admin-1", Reason: "抢跑", Key: "ticket-1", At: now,
+	}); err != outbox.ErrRedriveNotEligible {
+		t.Fatalf("pending 事件 error = %v, want ErrRedriveNotEligible", err)
+	}
+	// 非法请求必须在接触存储前被拒。
+	if _, err := repository.RedriveAttention(ctx, outbox.RedriveCommand{
+		EventID: eventID, ExpectedRedriveCount: 0, ActorID: "", Reason: "匿名", Key: "ticket-1", At: now,
+	}); err != outbox.ErrInvalidRedriveCommand {
+		t.Fatalf("缺操作者 error = %v, want ErrInvalidRedriveCommand", err)
+	}
+	// 不存在的事件是冲突而不是资格问题。
+	if _, err := repository.RedriveAttention(ctx, outbox.RedriveCommand{
+		EventID: outbox.SubmissionEventID("step-" + uuid.NewString()), ExpectedRedriveCount: 0,
+		ActorID: "admin-1", Reason: "不存在", Key: "ticket-1", At: now,
+	}); err != outbox.ErrRedriveConflict {
+		t.Fatalf("不存在事件 error = %v, want ErrRedriveConflict", err)
+	}
+}
+
+func TestMongoOutbox人工关注是终态且保留固定原因(t *testing.T) {
+	client := newLocalMongoClient(t)
+	database := client.Database("cling_main")
+	ctx, cancel := newMongoTestContext()
+	defer cancel()
+	if err := migrate.NewInitializer(database).Ensure(ctx); err != nil {
+		t.Fatalf("初始化本地 schema: %v", err)
+	}
+
+	repository := NewOutboxRepository(&Data{client: client, database: database})
+	eventID := outbox.SubmissionEventID("step-" + uuid.NewString())
+	now := time.Date(2026, time.September, 20, 12, 0, 0, 0, time.UTC)
+	event, err := outbox.NewPending(eventID, "creation-"+uuid.NewString(), []byte(`{"prompt":"x"}`), now)
+	if err != nil {
+		t.Fatalf("NewPending() error = %v", err)
+	}
+	collection := database.Collection(schema.CollectionOutboxEvents)
+	t.Cleanup(func() {
+		cleanupContext, cleanupCancel := newMongoTestContext()
+		defer cleanupCancel()
+		if _, err := collection.DeleteOne(cleanupContext, bson.D{{Key: "_id", Value: eventID}}); err != nil {
+			t.Errorf("按测试 _id 清理发件箱事件 %q: %v", eventID, err)
+		}
+	})
+
+	if err := repository.Enqueue(ctx, event); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	// 按 _id 精确领取，避免与同库其他测试的事件互相干扰。
+	claimed, err := repository.ClaimByIDAndType(ctx, "worker-1", eventID, outbox.EventTypeGenerationSubmission, now, now.Add(time.Minute))
+	if err != nil || claimed == nil {
+		t.Fatalf("ClaimByIDAndType() event/error = %#v / %v", claimed, err)
+	}
+
+	attentionAt := now.Add(time.Minute)
+	if err := repository.MarkNeedsAttention(ctx, eventID, claimed.LeaseToken, outbox.AttentionReasonMaterialUploadBudget, attentionAt); err != nil {
+		t.Fatalf("MarkNeedsAttention() error = %v", err)
+	}
+
+	// needs_attention 必须是终态：若仍可领取，预算耗尽的事件会被无限重新领取，
+	// 等于重试预算从未生效。
+	if again, err := repository.ClaimByIDAndType(ctx, "worker-2", eventID, outbox.EventTypeGenerationSubmission, attentionAt.Add(time.Minute), attentionAt.Add(2*time.Minute)); err != nil || again != nil {
+		t.Fatalf("needs_attention 事件被再次领取: %#v / %v", again, err)
+	}
+
+	var stored model.OutboxEventDocument
+	if err := collection.FindOne(ctx, bson.D{{Key: "_id", Value: eventID}}).Decode(&stored); err != nil {
+		t.Fatalf("读取发件箱事件: %v", err)
+	}
+	if stored.DeliveryStatus != string(outbox.DeliveryStatusNeedsAttention) {
+		t.Fatalf("delivery_status = %q, want needs_attention", stored.DeliveryStatus)
+	}
+	if stored.AttentionReason != string(outbox.AttentionReasonMaterialUploadBudget) ||
+		!outbox.ValidAttentionReason(outbox.AttentionReason(stored.AttentionReason)) {
+		t.Fatalf("attention_reason = %q, want 已登记的固定原因", stored.AttentionReason)
+	}
+	if stored.LeaseToken != "" || stored.LeaseOwner != "" || !stored.LeaseUntil.IsZero() {
+		t.Fatalf("人工关注未清除租约: %#v", stored)
+	}
+	if !stored.UpdatedAt.Equal(attentionAt) {
+		t.Fatalf("updated_at = %v, want %v", stored.UpdatedAt, attentionAt)
+	}
+}
+
+func TestMongoOutboxMarkNeedsAttention拒绝错误租约与非法原因(t *testing.T) {
+	client := newLocalMongoClient(t)
+	database := client.Database("cling_main")
+	ctx, cancel := newMongoTestContext()
+	defer cancel()
+	if err := migrate.NewInitializer(database).Ensure(ctx); err != nil {
+		t.Fatalf("初始化本地 schema: %v", err)
+	}
+
+	repository := NewOutboxRepository(&Data{client: client, database: database})
+	eventID := outbox.SubmissionEventID("step-" + uuid.NewString())
+	now := time.Date(2026, time.September, 20, 12, 0, 0, 0, time.UTC)
+	event, err := outbox.NewPending(eventID, "creation-"+uuid.NewString(), []byte(`{"prompt":"x"}`), now)
+	if err != nil {
+		t.Fatalf("NewPending() error = %v", err)
+	}
+	collection := database.Collection(schema.CollectionOutboxEvents)
+	t.Cleanup(func() {
+		cleanupContext, cleanupCancel := newMongoTestContext()
+		defer cleanupCancel()
+		if _, err := collection.DeleteOne(cleanupContext, bson.D{{Key: "_id", Value: eventID}}); err != nil {
+			t.Errorf("按测试 _id 清理发件箱事件 %q: %v", eventID, err)
+		}
+	})
+	if err := repository.Enqueue(ctx, event); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	claimed, err := repository.ClaimByIDAndType(ctx, "worker-1", eventID, outbox.EventTypeGenerationSubmission, now, now.Add(time.Minute))
+	if err != nil || claimed == nil {
+		t.Fatalf("ClaimByIDAndType() event/error = %#v / %v", claimed, err)
+	}
+
+	// 自由文本原因必须被拒绝：关注原因会出现在运营可见的记录里，
+	// 允许自由文本等于允许把 provider 地址或对象 key 写进去。
+	if err := repository.MarkNeedsAttention(ctx, eventID, claimed.LeaseToken, outbox.AttentionReason("upload failed: https://provider.example/x.png"), now.Add(time.Minute)); !errors.Is(err, outbox.ErrInvalidEvent) {
+		t.Fatalf("非法原因的 MarkNeedsAttention() error = %v, want ErrInvalidEvent", err)
+	}
+	if err := repository.MarkNeedsAttention(ctx, eventID, "wrong-lease", outbox.AttentionReasonEventAge, now.Add(time.Minute)); !errors.Is(err, outbox.ErrLeaseConflict) {
+		t.Fatalf("错误租约的 MarkNeedsAttention() error = %v, want ErrLeaseConflict", err)
+	}
+
+	var stored model.OutboxEventDocument
+	if err := collection.FindOne(ctx, bson.D{{Key: "_id", Value: eventID}}).Decode(&stored); err != nil {
+		t.Fatalf("读取发件箱事件: %v", err)
+	}
+	if stored.DeliveryStatus != string(outbox.DeliveryStatusDispatching) || stored.AttentionReason != "" {
+		t.Fatalf("被拒的调用改动了事件: %#v", stored)
 	}
 }
 

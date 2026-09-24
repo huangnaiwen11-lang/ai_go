@@ -13,19 +13,24 @@ type AccountDocument struct {
 
 // ReservationDocument 表示可被精确冲正的预留持久化对象。
 type ReservationDocument struct {
-	ID               string    `bson:"_id"`
-	CreationID       string    `bson:"creation_id"`
-	UserID           string    `bson:"user_id"`
-	PriceDiamonds    int64     `bson:"price_diamonds"`
-	ReservedDiamonds int64     `bson:"reserved_diamonds"`
-	BenefitSource    string    `bson:"benefit_source"`
-	QuotaKind        string    `bson:"quota_kind"`
-	LocalDate        string    `bson:"local_date"`
-	QuotaLimit       int32     `bson:"quota_limit"`
-	QuotaUnits       int32     `bson:"quota_units"`
-	Status           string    `bson:"status"`
-	CreatedAt        time.Time `bson:"created_at"`
-	UpdatedAt        time.Time `bson:"updated_at"`
+	ID               string `bson:"_id"`
+	CreationID       string `bson:"creation_id"`
+	UserID           string `bson:"user_id"`
+	PriceDiamonds    int64  `bson:"price_diamonds"`
+	ReservedDiamonds int64  `bson:"reserved_diamonds"`
+	BenefitSource    string `bson:"benefit_source"`
+	QuotaKind        string `bson:"quota_kind"`
+	LocalDate        string `bson:"local_date"`
+	QuotaLimit       int32  `bson:"quota_limit"`
+	QuotaUnits       int32  `bson:"quota_units"`
+	Status           string `bson:"status"`
+	// PublicationState/Version form the shared success-versus-refund gate for
+	// externally generated results. They are omitted for legacy local records
+	// until a B2B submission explicitly opens the gate.
+	PublicationState   string    `bson:"publication_state,omitempty"`
+	PublicationVersion int64     `bson:"publication_version,omitempty"`
+	CreatedAt          time.Time `bson:"created_at"`
+	UpdatedAt          time.Time `bson:"updated_at"`
 }
 
 // LedgerEntryDocument 表示账本分录持久化对象。

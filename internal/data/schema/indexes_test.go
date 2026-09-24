@@ -28,10 +28,22 @@ func TestAllCollectionsReturnsIndependentOrderedList(t *testing.T) {
 		"payment_receipts",
 		"payment_callback_nonces",
 		"callback_receipts",
+		"generation_provider_inbox",
+		"generation_product_recipes",
+		"generation_model_mappings",
 		"outbox_events",
 		"feedbacks",
 		"notifications",
 		"notification_preferences",
+		"admin_audit",
+		"blog_posts",
+		"utmlinks",
+		"admin_menu_visibility",
+		"apps",
+		"platform_configs",
+		"admin_pricing_configs",
+		"admin_review_items",
+		"admin_review_projection_state",
 	}
 
 	got := AllCollections()
@@ -64,6 +76,8 @@ func TestAllIndexesReturnsExactIndependentSpecs(t *testing.T) {
 
 func expectedIndexes() []IndexSpec {
 	return []IndexSpec{
+		{Collection: "credentials", Name: "ix_credentials_user_active", Keys: bson.D{{Key: "user_id", Value: 1}, {Key: "active", Value: 1}}},
+		{Collection: "identities", Name: "ix_identities_user", Keys: bson.D{{Key: "user_id", Value: 1}}},
 		{
 			Collection: "identities",
 			Name:       "ux_identities_provider_subject",
@@ -106,6 +120,11 @@ func expectedIndexes() []IndexSpec {
 			Keys:       bson.D{{Key: "owner_type", Value: 1}, {Key: "owner_id", Value: 1}, {Key: "created_at", Value: -1}},
 		},
 		{
+			Collection: "assets",
+			Name:       "ix_assets_storage_key_owner_status",
+			Keys:       bson.D{{Key: "storage_key", Value: 1}, {Key: "owner_type", Value: 1}, {Key: "status", Value: 1}},
+		},
+		{
 			Collection: "creations",
 			Name:       "ux_creations_idempotency_key",
 			Keys:       bson.D{{Key: "idempotency_key", Value: 1}},
@@ -140,10 +159,14 @@ func expectedIndexes() []IndexSpec {
 		},
 		{
 			Collection: "creation_steps",
-			Name:       "ux_creation_steps_external_execution_present",
-			Keys:       bson.D{{Key: "external_execution_id", Value: 1}},
+			Name:       "ux_creation_steps_provider_account_external_execution_present",
+			Keys:       bson.D{{Key: "provider", Value: 1}, {Key: "account_ref", Value: 1}, {Key: "external_execution_id", Value: 1}},
 			Unique:     true,
-			Sparse:     true,
+			PartialFilter: bson.D{
+				{Key: "provider", Value: bson.D{{Key: "$type", Value: "string"}}},
+				{Key: "account_ref", Value: bson.D{{Key: "$type", Value: "string"}}},
+				{Key: "external_execution_id", Value: bson.D{{Key: "$type", Value: "string"}}},
+			},
 		},
 		{
 			Collection: "reservations",
@@ -215,6 +238,28 @@ func expectedIndexes() []IndexSpec {
 			Keys:       bson.D{{Key: "source", Value: 1}, {Key: "step_id", Value: 1}, {Key: "job_id", Value: 1}, {Key: "capability", Value: 1}, {Key: "terminal", Value: 1}},
 		},
 		{
+			Collection: "generation_provider_inbox",
+			Name:       "ux_generation_provider_inbox_source_account_delivery",
+			Keys:       bson.D{{Key: "source", Value: 1}, {Key: "account_ref", Value: 1}, {Key: "delivery_id", Value: 1}},
+			Unique:     true,
+		},
+		{
+			Collection: "generation_provider_inbox",
+			Name:       "ix_generation_provider_inbox_step_status_updated",
+			Keys:       bson.D{{Key: "step_id", Value: 1}, {Key: "status", Value: 1}, {Key: "updated_at", Value: -1}},
+		},
+		{
+			Collection: "generation_product_recipes",
+			Name:       "ux_generation_product_recipes_template_version_atom",
+			Keys:       bson.D{{Key: "template_id", Value: 1}, {Key: "template_version", Value: 1}, {Key: "atom", Value: 1}},
+			Unique:     true,
+		},
+		{
+			Collection: "generation_model_mappings",
+			Name:       "ix_generation_model_mappings_status_published_at",
+			Keys:       bson.D{{Key: "status", Value: 1}, {Key: "published_at", Value: -1}},
+		},
+		{
 			Collection: "outbox_events",
 			Name:       "ix_outbox_events_status_next_attempt",
 			Keys:       bson.D{{Key: "delivery_status", Value: 1}, {Key: "next_attempt_at", Value: 1}},
@@ -228,6 +273,59 @@ func expectedIndexes() []IndexSpec {
 			Collection: "notifications",
 			Name:       "ix_notifications_user_read_created",
 			Keys:       bson.D{{Key: "user_id", Value: 1}, {Key: "read", Value: 1}, {Key: "created_at", Value: -1}},
+		},
+		{
+			Collection: "blog_posts",
+			Name:       "ux_blog_posts_slug",
+			Keys:       bson.D{{Key: "slug", Value: 1}},
+			Unique:     true,
+		},
+		{
+			Collection: "blog_posts",
+			Name:       "ix_blog_posts_status_created",
+			Keys:       bson.D{{Key: "status", Value: 1}, {Key: "created_at", Value: -1}},
+		},
+		{
+			Collection: "utmlinks",
+			Name:       "ux_utmlinks_slug",
+			Keys:       bson.D{{Key: "slug", Value: 1}},
+			Unique:     true,
+		},
+		{
+			Collection: "utmlinks",
+			Name:       "ix_utmlinks_enabled_created",
+			Keys:       bson.D{{Key: "enabled", Value: 1}, {Key: "createdAt", Value: -1}},
+		},
+		{
+			Collection:    "apps",
+			Name:          "uniq_android_native_identifiers",
+			Keys:          bson.D{{Key: "nativeIdentifiers", Value: 1}},
+			Unique:        true,
+			PartialFilter: bson.D{{Key: "nativeIdentifiers.0", Value: bson.D{{Key: "$exists", Value: true}}}},
+		},
+		{
+			Collection: "platform_configs",
+			Name:       "ux_platform_configs_platform_client",
+			Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "clientId", Value: 1}},
+			Unique:     true,
+		},
+		{
+			Collection: "admin_pricing_configs",
+			Name:       "ux_admin_pricing_configs_key_environment",
+			Keys:       bson.D{{Key: "key", Value: 1}, {Key: "environment", Value: 1}},
+			Unique:     true,
+		},
+		{
+			Collection: "admin_review_items",
+			Name:       "ix_admin_review_items_media_status_created",
+			Keys:       bson.D{{Key: "media_type", Value: 1}, {Key: "review_status", Value: 1}, {Key: "created_at", Value: -1}, {Key: "_id", Value: -1}},
+		},
+		{
+			Collection:    "admin_review_items",
+			Name:          "ux_admin_review_items_source_legacy",
+			Keys:          bson.D{{Key: "source", Value: 1}, {Key: "legacy_source_id", Value: 1}},
+			Unique:        true,
+			PartialFilter: bson.D{{Key: "legacy_source_id", Value: bson.D{{Key: "$exists", Value: true}}}},
 		},
 	}
 }

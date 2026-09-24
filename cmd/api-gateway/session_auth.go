@@ -14,7 +14,7 @@ import (
 // newConfiguredSessionAuthenticator 只装配本机 rs0 的 Go 自有会话验证依赖。
 // 它不注册公开路由，也不接受或转换 Node 的登录态。
 func newConfiguredSessionAuthenticator(dataConfig *conf.Data) (*sessionauth.Authenticator, func(), error) {
-	if err := conf.ValidateLocalMongo(dataConfig); err != nil {
+	if err := conf.ValidateConfiguredMongo(dataConfig); err != nil {
 		return nil, nil, err
 	}
 	storage, cleanup, err := data.NewData(dataConfig)

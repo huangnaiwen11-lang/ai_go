@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"ai-business-service/internal/biz/payments"
 	"ai-business-service/internal/biz/shared"
@@ -19,6 +20,7 @@ const (
 	checkoutPath       = "/api/wallet/create-external-checkout"
 	verifyPurchasePath = "/api/wallet/verify-purchase"
 	maxRequestBytes    = 64 << 10
+	paycoresTimeout    = 15 * time.Second
 )
 
 type authenticator interface {
@@ -28,6 +30,10 @@ type authenticator interface {
 type checkoutUsecase interface {
 	CreatePendingPayCoresOrder(context.Context, string, string) (*payments.PaymentOrder, error)
 	SettleVerifiedStorePurchase(context.Context, payments.VerifiedStorePurchase) (payments.ApplyResult, error)
+}
+
+type channelCheckoutUsecase interface {
+	CreatePayCoresCheckoutForChannel(context.Context, string, string, payments.PaymentChannelSelection) (payments.PayCoresCheckout, error)
 }
 
 // paycoresCheckoutUsecase 是显式启用本地 PayCores mock 时的真实建单边界。
@@ -42,6 +48,7 @@ type handler struct {
 	verifier      appstore.Verifier
 	paycores      paycoresCheckoutUsecase
 	queries       queryUsecase
+	methods       externalMethodsUsecase
 }
 
 // NewHandler 创建本地支付入口处理器。路由接管权仍由 Gateway 的精确开关控制。
@@ -98,14 +105,27 @@ func (handler *handler) authenticate(request *http.Request) (*sessionauth.Authen
 
 func (handler *handler) createCheckout(writer http.ResponseWriter, request *http.Request, userID string) {
 	var body struct {
-		ProductID string `json:"productId"`
+		ProductID         string         `json:"productId"`
+		Provider          string         `json:"provider"`
+		Account           string         `json:"account"`
+		ClientRequestID   string         `json:"clientRequestId"`
+		PricingDecisionID string         `json:"pricingDecisionId"`
+		BillingDetails    map[string]any `json:"billingDetails"`
 	}
 	if err := decodeStrictJSON(request, &body); err != nil || strings.TrimSpace(body.ProductID) == "" {
 		writeClientError(writer, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request")
 		return
 	}
 	if handler.paycores != nil {
-		checkout, err := handler.paycores.CreatePayCoresCheckout(request.Context(), userID, body.ProductID)
+		var checkout payments.PayCoresCheckout
+		var err error
+		ctx, cancel := context.WithTimeout(request.Context(), paycoresTimeout)
+		defer cancel()
+		if channelCheckout, ok := handler.paycores.(channelCheckoutUsecase); ok {
+			checkout, err = channelCheckout.CreatePayCoresCheckoutForChannel(ctx, userID, body.ProductID, payments.PaymentChannelSelection{Provider: strings.TrimSpace(body.Provider), Account: strings.TrimSpace(body.Account), ClientDevicePlatform: "web", ClientRequestID: strings.TrimSpace(body.ClientRequestID)})
+		} else {
+			checkout, err = handler.paycores.CreatePayCoresCheckout(ctx, userID, body.ProductID)
+		}
 		if err != nil {
 			writePaymentError(writer, err)
 			return

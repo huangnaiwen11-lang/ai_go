@@ -1352,7 +1352,27 @@ type creationFixture struct {
 	outbox        *fixtureOutboxWriter
 	transaction   *fixtureTxRunner
 	entitlements  *fixtureEntitlementEvaluator
-	usecase       *creations.Usecase
+	// admissions 为 nil 时用例只冻结本地归属，与生产默认装配一致。
+	admissions creations.AdmissionResolver
+	clock      func() time.Time
+	usecase    *creations.Usecase
+}
+
+// withAdmissions 用指定归属解析器重建用例，供 admission 用例覆盖默认本地解析器。
+func (fixture *creationFixture) withAdmissions(admissions creations.AdmissionResolver) *creationFixture {
+	fixture.admissions = admissions
+	fixture.usecase = creations.NewUsecaseWithClock(
+		fixture.users,
+		fixture.subscriptions,
+		fixture.entitlements,
+		fixture.repository,
+		fixture.reservations,
+		fixture.outbox,
+		fixture.transaction,
+		admissions,
+		fixture.clock,
+	)
+	return fixture
 }
 
 func newCreationFixture(t *testing.T) *creationFixture {
@@ -1378,6 +1398,7 @@ func newCreationFixtureWithClock(t *testing.T, clock func() time.Time) *creation
 		reservations:  reservations,
 		outbox:        &fixtureOutboxWriter{state: state},
 		transaction:   &fixtureTxRunner{state: state},
+		clock:         clock,
 	}
 	fixture.entitlements = &fixtureEntitlementEvaluator{}
 	fixture.usecase = creations.NewUsecaseWithClock(
@@ -1388,6 +1409,7 @@ func newCreationFixtureWithClock(t *testing.T, clock func() time.Time) *creation
 		fixture.reservations,
 		fixture.outbox,
 		fixture.transaction,
+		fixture.admissions,
 		clock,
 	)
 	return fixture
@@ -1658,6 +1680,13 @@ func (writer *fixtureDeferredRecipeWriter) Create(_ context.Context, recipe *cre
 	}
 	copyRecipe := *recipe
 	copyRecipe.InputTemplate = append([]byte(nil), recipe.InputTemplate...)
+	if recipe.B2B != nil {
+		normalized, err := recipe.B2B.Normalize()
+		if err != nil {
+			return err
+		}
+		copyRecipe.B2B = &normalized
+	}
 	writer.state.deferredRecipes[recipe.StepID] = &copyRecipe
 	return nil
 }

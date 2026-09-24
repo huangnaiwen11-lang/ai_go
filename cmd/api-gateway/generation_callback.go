@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	bizgeneration "ai-business-service/internal/biz/generation"
@@ -34,7 +36,7 @@ func newGenerationCallbackHandler(security *conf.Security, usecase *bizgeneratio
 // newConfiguredGenerationCallbackHandler 装配本地 rs0 所需的回调事务依赖。
 // 它不构造 Worker；调用方负责在进程退出时执行返回的清理函数。
 func newConfiguredGenerationCallbackHandler(dataConfig *conf.Data, security *conf.Security) (http.Handler, func(), error) {
-	if err := conf.ValidateLocalMongo(dataConfig); err != nil {
+	if err := conf.ValidateConfiguredMongo(dataConfig); err != nil {
 		return nil, nil, err
 	}
 	storage, cleanup, err := data.NewData(dataConfig)
@@ -95,8 +97,57 @@ func loadGatewayBootstrap(path string) (*conf.Bootstrap, error) {
 	if err := configSource.Scan(bootstrap); err != nil {
 		return nil, err
 	}
+	if err := conf.ApplyMongoEnvironmentOverrides(bootstrap, os.Getenv); err != nil {
+		return nil, err
+	}
+	applyPayCoresEnvironmentOverrides(bootstrap)
+	applyPolarStarB2BEnvironmentOverrides(bootstrap)
 	if err := conf.Validate(bootstrap); err != nil {
 		return nil, err
 	}
 	return bootstrap, nil
+}
+
+// applyPolarStarB2BEnvironmentOverrides injects the two callback signing-key
+// slots from the process environment.  They are intentionally the only B2B
+// fields overridden here: account identity, callback origin and delivery mode
+// remain configuration-file values, while an empty environment value leaves a
+// mounted Secret-file value untouched.  Values are not trimmed so accidental
+// surrounding whitespace fails conf.Validate instead of silently changing the
+// bytes used for HMAC verification.
+func applyPolarStarB2BEnvironmentOverrides(bootstrap *conf.Bootstrap) {
+	if err := conf.ApplyPolarStarB2BEnvironmentOverrides(bootstrap, os.Getenv); err != nil {
+		panic(err)
+	}
+}
+
+// applyPayCoresEnvironmentOverrides keeps production credentials and return
+// origins out of checked-in YAML while retaining the local config baseline.
+func applyPayCoresEnvironmentOverrides(bootstrap *conf.Bootstrap) {
+	if bootstrap == nil {
+		return
+	}
+	security := bootstrap.GetSecurity()
+	if security != nil {
+		if value := strings.TrimSpace(os.Getenv("PAYCORES_REQUEST_HMAC_KEY")); value != "" {
+			security.PaycoresRequestHmacKey = value
+		}
+		if value := strings.TrimSpace(os.Getenv("PAYCORES_CALLBACK_HMAC_KEY")); value != "" {
+			security.PaycoresCallbackHmacKey = value
+		}
+	}
+	integrations := bootstrap.GetIntegrations()
+	if integrations == nil || integrations.GetPaycores() == nil {
+		return
+	}
+	paycores := integrations.GetPaycores()
+	if value := strings.TrimSpace(os.Getenv("PAYCORES_BASE_URL")); value != "" {
+		paycores.BaseUrl = value
+	}
+	if value := strings.TrimSpace(os.Getenv("PAYCORES_RETURN_URL")); value != "" {
+		paycores.ReturnUrl = value
+	}
+	if value := strings.TrimSpace(os.Getenv("PAYCORES_CANCEL_URL")); value != "" {
+		paycores.CancelUrl = value
+	}
 }

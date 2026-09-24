@@ -146,6 +146,7 @@ type reservedCreator interface {
 // Usecase 读取模板并复用统一的创作、预扣、账本和 Outbox 事务。
 type Usecase struct {
 	recipes   TemplateRecipeReader
+	products  creations.B2BProductRecipeReader
 	creations reservedCreator
 	images    OwnedImageReader
 }
@@ -155,10 +156,24 @@ func NewUsecase(recipes TemplateRecipeReader, creator reservedCreator, images Ow
 	return &Usecase{recipes: recipes, creations: creator, images: images}
 }
 
+// NewUsecaseWithB2BProductRecipes enables the published B2B product path.
+// Text-to-video keeps two separately reviewed products: its first image is
+// submitted now, while the unbound I2V product is frozen for the materializer
+// to activate only after it owns an immutable R2 opening frame.
+func NewUsecaseWithB2BProductRecipes(recipes TemplateRecipeReader, products creations.B2BProductRecipeReader, creator reservedCreator, images OwnedImageReader) *Usecase {
+	return &Usecase{recipes: recipes, products: products, creations: creator, images: images}
+}
+
 // Create 按已选模板冻结技术计划并提交创作预扣事务。
 func (usecase *Usecase) Create(ctx context.Context, command CreateCommand) (*creations.CreateReservedResult, error) {
 	if usecase == nil || usecase.recipes == nil || usecase.creations == nil || strings.TrimSpace(command.UserID) == "" || strings.TrimSpace(command.TemplateID) == "" || strings.TrimSpace(command.IdempotencyKey) == "" || !validContentAccess(command.ContentAccess) {
 		return nil, ErrInvalidTemplateVideoRequest
+	}
+	if usecase.products != nil {
+		imageURL, prompt := strings.TrimSpace(command.Input.UserImageURL), strings.TrimSpace(command.Input.UserPrompt)
+		if !validVideoDuration(command.Input.Duration) || imageURL != command.Input.UserImageURL || prompt != command.Input.UserPrompt || (imageURL == "") == (prompt == "") {
+			return nil, creations.ErrB2BProductRecipeUnavailable
+		}
 	}
 	if command.Input.UserImageURL != "" {
 		if usecase.images == nil {
@@ -173,6 +188,12 @@ func (usecase *Usecase) Create(ctx context.Context, command CreateCommand) (*cre
 	recipe, err := usecase.recipes.LoadTemplateVideo(ctx, command.TemplateID, command.ContentAccess)
 	if err != nil {
 		return nil, err
+	}
+	if usecase.products != nil {
+		if command.Input.UserImageURL != "" {
+			return usecase.createB2BImageToVideo(ctx, command, recipe)
+		}
+		return usecase.createB2BTextToVideo(ctx, command, recipe)
 	}
 	compiled, err := CompileTemplateVideo(recipe, command.Input)
 	if err != nil {
@@ -189,6 +210,95 @@ func (usecase *Usecase) Create(ctx context.Context, command CreateCommand) (*cre
 		InitialSubmission:    compiled.InitialSubmission,
 		DeferredImageToVideo: compiled.DeferredImageToVideo,
 	})
+}
+
+func (usecase *Usecase) createB2BTextToVideo(ctx context.Context, command CreateCommand, template TemplateRecipe) (*creations.CreateReservedResult, error) {
+	firstProduct, err := usecase.products.LoadB2BProductRecipe(ctx, template.TemplateID, template.Version, creations.AtomTextToImage)
+	if err != nil {
+		return nil, err
+	}
+	firstProduct, err = firstProduct.Normalize()
+	if err != nil || firstProduct.TemplateID != template.TemplateID || firstProduct.TemplateVersion != template.Version || firstProduct.Atom != creations.AtomTextToImage {
+		return nil, creations.ErrB2BProductRecipeUnavailable
+	}
+	first, err := firstProduct.CompileB2BProductRecipe(map[string]json.RawMessage{"prompt": mustMarshalB2BVideoValue(command.Input.UserPrompt)}, nil)
+	if err != nil {
+		return nil, err
+	}
+	secondProduct, err := usecase.products.LoadB2BProductRecipe(ctx, template.TemplateID, template.Version, creations.AtomImageToVideo)
+	if err != nil {
+		return nil, err
+	}
+	secondProduct, err = secondProduct.Normalize()
+	if err != nil || secondProduct.TemplateID != template.TemplateID || secondProduct.TemplateVersion != template.Version || secondProduct.Atom != creations.AtomImageToVideo {
+		return nil, creations.ErrB2BProductRecipeUnavailable
+	}
+	deferred, err := creations.CompileDeferredB2BImageToVideo(secondProduct, videoB2BOverrides(command.Input.Duration))
+	if err != nil {
+		return nil, err
+	}
+	firstDigest, err := first.Digest()
+	if err != nil {
+		return nil, creations.ErrB2BProductRecipeUnavailable
+	}
+	return usecase.creations.CreateReserved(ctx, creations.CreateReservedRequest{
+		UserID: command.UserID, IdempotencyKey: command.IdempotencyKey, TemplateID: template.TemplateID, TemplateVersion: template.Version,
+		Product: entitlement.GenerationRequest{Output: entitlement.ProductOutputVideo, Video: entitlement.VideoOptions{
+			DurationSeconds: command.Input.Duration, EnableAudio: command.Input.EnableAudio,
+		}},
+		// InputDigest does not retain the user's prompt; it commits the two
+		// reviewed product snapshots in a stable order while RequestFingerprint
+		// separately carries each exact recipe digest.
+		InputDigest:             digestTechnicalInputs([]byte(firstDigest), []byte(deferred.Digest)),
+		Plan:                    []creations.StepPlan{{Sequence: 1, Atom: creations.AtomTextToImage}, {Sequence: 2, Atom: creations.AtomImageToVideo}},
+		B2BSubmission:           &first,
+		DeferredB2BImageToVideo: deferred,
+	})
+}
+
+func (usecase *Usecase) createB2BImageToVideo(ctx context.Context, command CreateCommand, template TemplateRecipe) (*creations.CreateReservedResult, error) {
+	product, err := usecase.products.LoadB2BProductRecipe(ctx, template.TemplateID, template.Version, creations.AtomImageToVideo)
+	if err != nil {
+		return nil, err
+	}
+	product, err = product.Normalize()
+	if err != nil || product.TemplateID != template.TemplateID || product.TemplateVersion != template.Version || product.Atom != creations.AtomImageToVideo {
+		return nil, creations.ErrB2BProductRecipeUnavailable
+	}
+	compiled, err := product.CompileB2BProductRecipe(videoB2BOverrides(command.Input.Duration), []creations.B2BAsset{{Role: "source_image", URL: command.Input.UserImageURL}})
+	if err != nil {
+		return nil, err
+	}
+	digest, err := compiled.Digest()
+	if err != nil {
+		return nil, creations.ErrB2BProductRecipeUnavailable
+	}
+	return usecase.creations.CreateReserved(ctx, creations.CreateReservedRequest{
+		UserID:          command.UserID,
+		IdempotencyKey:  command.IdempotencyKey,
+		TemplateID:      template.TemplateID,
+		TemplateVersion: template.Version,
+		Product: entitlement.GenerationRequest{
+			Output: entitlement.ProductOutputVideo,
+			Video: entitlement.VideoOptions{
+				DurationSeconds:     command.Input.Duration,
+				EnableAudio:         command.Input.EnableAudio,
+				ReferenceImageCount: 1,
+			},
+		},
+		InputDigest:   digest,
+		Plan:          []creations.StepPlan{{Sequence: 1, Atom: creations.AtomImageToVideo}},
+		B2BSubmission: &compiled,
+	})
+}
+
+func videoB2BOverrides(duration int32) map[string]json.RawMessage {
+	return map[string]json.RawMessage{"durationSeconds": mustMarshalB2BVideoValue(duration)}
+}
+
+func mustMarshalB2BVideoValue(value any) json.RawMessage {
+	encoded, _ := json.Marshal(value)
+	return encoded
 }
 
 func compileI2VInput(recipe TechnicalRecipe, sourceImageURL string, duration int32) ([]byte, error) {

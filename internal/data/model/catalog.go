@@ -36,7 +36,11 @@ type AssetDocument struct {
 	StorageKey string `bson:"storage_key"`
 	Status     string `bson:"status"`
 	// ContentType 与 ByteSize 是用户上传素材的内容合同；生成结果资产可保持零值以兼容旧记录。
-	ContentType string    `bson:"content_type,omitempty"`
-	ByteSize    int64     `bson:"byte_size,omitempty"`
-	CreatedAt   time.Time `bson:"created_at"`
+	ContentType string `bson:"content_type,omitempty"`
+	ByteSize    int64  `bson:"byte_size,omitempty"`
+	// ContentSHA256 is recorded for B2B materialized results so the database
+	// asset can be tied back to the immutable R2 object without retaining the
+	// transient provider URL as a user-visible reference.
+	ContentSHA256 string    `bson:"content_sha256,omitempty"`
+	CreatedAt     time.Time `bson:"created_at"`
 }

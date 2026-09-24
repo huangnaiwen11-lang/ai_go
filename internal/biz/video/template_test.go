@@ -99,6 +99,83 @@ func TestUsecase图片素材未授权时不创建视频任务(t *testing.T) {
 	}
 }
 
+// B2B 只支持已经有用户自有首帧的单步 I2V。文本到视频仍依赖首帧素材发布与
+// 第二步激活，未实现前必须在预扣前拒绝，不能伪装成单步产品。
+func TestUsecase按发布B2B产品配方创建单步I2V(t *testing.T) {
+	creator := &recordingCreator{}
+	products := &recordingB2BProductRecipeReader{recipe: creations.PublishedB2BProductRecipe{
+		TemplateID: "video-template-1", TemplateVersion: 1, Atom: creations.AtomImageToVideo,
+		ProductKey: "video-standard", Input: json.RawMessage(`{"prompt":"cinematic movement"}`),
+		AllowedUserInputs: []string{"durationSeconds"},
+	}}
+	usecase := bizvideo.NewUsecaseWithB2BProductRecipes(memoryTemplateReader{recipe: validTemplateRecipe()}, products, creator, allowedOwnedImageReader{})
+	_, err := usecase.Create(t.Context(), bizvideo.CreateCommand{
+		UserID: "user-1", ContentAccess: "standard", IdempotencyKey: "gateway:video:image:b2b-request", TemplateID: "video-template-1",
+		Input: bizvideo.TemplateVideoInput{UserImageURL: "https://assets.example.com/source.png", Duration: 10},
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if creator.calls != 1 || creator.request.InitialSubmission != nil || creator.request.B2BSubmission == nil {
+		t.Fatalf("B2B 创建请求 = %#v", creator.request)
+	}
+	if creator.request.Product.Video.DurationSeconds != 10 || creator.request.Product.Video.ReferenceImageCount != 1 || len(creator.request.Plan) != 1 || creator.request.Plan[0].Atom != creations.AtomImageToVideo {
+		t.Fatalf("B2B 视频产品或计划 = %#v", creator.request)
+	}
+	if string(creator.request.B2BSubmission.Input) != `{"durationSeconds":10,"prompt":"cinematic movement"}` || len(creator.request.B2BSubmission.Assets) != 1 || creator.request.B2BSubmission.Assets[0] != (creations.B2BAsset{Role: "source_image", URL: "https://assets.example.com/source.png"}) {
+		t.Fatalf("B2B 视频配方 = %#v", creator.request.B2BSubmission)
+	}
+}
+
+func TestUsecaseB2B文本视频在预扣前拒绝(t *testing.T) {
+	creator := &recordingCreator{}
+	usecase := bizvideo.NewUsecaseWithB2BProductRecipes(memoryTemplateReader{recipe: validTemplateRecipe()}, &recordingB2BProductRecipeReader{}, creator, allowedOwnedImageReader{})
+	_, err := usecase.Create(t.Context(), bizvideo.CreateCommand{
+		UserID: "user-1", ContentAccess: "standard", IdempotencyKey: "gateway:video:text:b2b-request", TemplateID: "video-template-1",
+		Input: bizvideo.TemplateVideoInput{UserPrompt: "海边漫步", Duration: 5},
+	})
+	if !errors.Is(err, creations.ErrB2BProductRecipeUnavailable) || creator.calls != 0 {
+		t.Fatalf("Create() error = %v, create calls = %d", err, creator.calls)
+	}
+}
+
+func TestUsecase按发布B2B产品配方创建两步文本视频(t *testing.T) {
+	creator := &recordingCreator{}
+	products := &recordingB2BProductRecipeReader{recipes: map[creations.StepAtom]creations.PublishedB2BProductRecipe{
+		creations.AtomTextToImage: {
+			TemplateID: "video-template-1", TemplateVersion: 1, Atom: creations.AtomTextToImage,
+			ProductKey: "image-standard", Input: json.RawMessage(`{"prompt":"cinematic frame","aspectRatio":"9:16"}`),
+			AllowedUserInputs: []string{"prompt"}, PromptUserInputMode: creations.PromptUserInputModeAppend,
+		},
+		creations.AtomImageToVideo: {
+			TemplateID: "video-template-1", TemplateVersion: 1, Atom: creations.AtomImageToVideo,
+			ProductKey: "video-standard", Input: json.RawMessage(`{"prompt":"cinematic motion"}`),
+			AllowedUserInputs: []string{"durationSeconds"},
+		},
+	}}
+	usecase := bizvideo.NewUsecaseWithB2BProductRecipes(memoryTemplateReader{recipe: validTemplateRecipe()}, products, creator, allowedOwnedImageReader{})
+	_, err := usecase.Create(t.Context(), bizvideo.CreateCommand{
+		UserID: "user-1", ContentAccess: "standard", IdempotencyKey: "gateway:video:text:b2b-two-step", TemplateID: "video-template-1",
+		Input: bizvideo.TemplateVideoInput{UserPrompt: "海边漫步", Duration: 5},
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if creator.calls != 1 || creator.request.InitialSubmission != nil || creator.request.DeferredImageToVideo != nil || creator.request.B2BSubmission == nil || creator.request.DeferredB2BImageToVideo == nil {
+		t.Fatalf("two-step B2B creation request = %#v", creator.request)
+	}
+	if len(creator.request.Plan) != 2 || creator.request.Plan[0].Atom != creations.AtomTextToImage || creator.request.Plan[1].Atom != creations.AtomImageToVideo || creator.request.Product.Video.ReferenceImageCount != 0 || creator.request.Product.Video.DurationSeconds != 5 {
+		t.Fatalf("two-step B2B plan/product = %#v", creator.request)
+	}
+	if string(creator.request.B2BSubmission.Input) != `{"aspectRatio":"9:16","prompt":"cinematic frame，海边漫步"}` || len(creator.request.B2BSubmission.Assets) != 0 {
+		t.Fatalf("first B2B product = %#v", creator.request.B2BSubmission)
+	}
+	deferred := creator.request.DeferredB2BImageToVideo
+	if deferred.Digest == "" || string(deferred.Recipe.Input) != `{"durationSeconds":5,"prompt":"cinematic motion"}` || len(deferred.Recipe.Assets) != 0 {
+		t.Fatalf("unbound second B2B product = %#v", deferred)
+	}
+}
+
 func validTemplateRecipe() bizvideo.TemplateRecipe {
 	return bizvideo.TemplateRecipe{
 		TemplateID: "video-template-1",
@@ -124,11 +201,28 @@ func (reader memoryTemplateReader) LoadTemplateVideo(_ context.Context, _, _ str
 	return reader.recipe, nil
 }
 
-type recordingCreator struct{ calls int }
+type recordingCreator struct {
+	calls   int
+	request creations.CreateReservedRequest
+}
 
-func (creator *recordingCreator) CreateReserved(_ context.Context, _ creations.CreateReservedRequest) (*creations.CreateReservedResult, error) {
+func (creator *recordingCreator) CreateReserved(_ context.Context, request creations.CreateReservedRequest) (*creations.CreateReservedResult, error) {
 	creator.calls++
+	creator.request = request
 	return &creations.CreateReservedResult{}, nil
+}
+
+type recordingB2BProductRecipeReader struct {
+	recipe  creations.PublishedB2BProductRecipe
+	recipes map[creations.StepAtom]creations.PublishedB2BProductRecipe
+	err     error
+}
+
+func (reader *recordingB2BProductRecipeReader) LoadB2BProductRecipe(_ context.Context, _ string, _ int64, atom creations.StepAtom) (creations.PublishedB2BProductRecipe, error) {
+	if reader.recipes != nil {
+		return reader.recipes[atom], reader.err
+	}
+	return reader.recipe, reader.err
 }
 
 type deniedOwnedImageReader struct{}

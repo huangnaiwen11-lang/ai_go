@@ -30,7 +30,7 @@ func newConfiguredPaymentEntryHandlerWithCreator(dataConfig *conf.Data, authenti
 	if authenticator == nil {
 		return nil, nil, errors.New("Go session authenticator is required for local payment entry")
 	}
-	if err := conf.ValidateLocalMongo(dataConfig); err != nil {
+	if err := conf.ValidateConfiguredMongo(dataConfig); err != nil {
 		return nil, nil, err
 	}
 	storage, cleanup, err := data.NewData(dataConfig)
@@ -53,7 +53,14 @@ func newConfiguredPaymentEntryHandlerWithCreator(dataConfig *conf.Data, authenti
 	checkout := payments.NewCheckoutServiceWithPayCores(repository, creator, time.Now)
 	queries := payments.NewReadUsecase(data.NewPaymentReadRepository(storage))
 	if creator != nil {
-		return localpayment.NewHandlerWithQueries(authenticator, checkout, appstore.LocalVerifier{}, queries, checkout), cleanup, nil
+		var methods interface {
+			ListPaymentMethods(context.Context, payments.PaymentMethodsRequest) ([]payments.PaymentMethod, error)
+		}
+		if paycoresCreator, ok := creator.(paycoresCheckoutCreator); ok {
+			methods = paycoresCreator.client
+			queries = payments.NewReadUsecaseWithPayCoresStatus(data.NewPaymentReadRepository(storage), paycoresCreator)
+		}
+		return localpayment.NewHandlerWithQueriesAndMethods(authenticator, checkout, appstore.LocalVerifier{}, queries, methods, checkout), cleanup, nil
 	}
 	return localpayment.NewHandlerWithQueries(authenticator, checkout, appstore.LocalVerifier{}, queries), cleanup, nil
 }
@@ -72,12 +79,25 @@ func newGatewayPayCoresNonce() string { return uuid.NewString() }
 func (creator paycoresCheckoutCreator) CreatePayCoresOrder(ctx context.Context, request payments.PayCoresCheckoutRequest) (payments.PayCoresCheckoutResult, error) {
 	result, err := creator.client.CreateOrder(ctx, paycores.CreateOrderRequest{
 		UserID: request.UserID, ProductID: request.ProductID, AmountCents: request.AmountCents, Credits: request.Credits,
-		Label: request.Label, ClientRequestID: request.ClientRequestID, ReturnURL: creator.returnURL, CancelURL: creator.cancelURL,
+		Label: request.Label, ClientRequestID: request.ClientRequestID, Provider: request.Provider, Account: request.Account,
+		ClientDevicePlatform: request.ClientDevicePlatform, ReturnURL: creator.returnURL, CancelURL: creator.cancelURL,
 	})
 	if err != nil {
 		return payments.PayCoresCheckoutResult{}, err
 	}
 	return payments.PayCoresCheckoutResult{ProviderOrderID: result.OrderID, CheckoutURL: result.CheckoutURL}, nil
+}
+
+// GetPayCoresOrderStatus 仅供已认证订单的展示回查使用，不参与本地账本结算。
+func (creator paycoresCheckoutCreator) GetPayCoresOrderStatus(ctx context.Context, orderID, userID string) (payments.PayCoresOrderStatusSnapshot, error) {
+	result, err := creator.client.GetOrderStatus(ctx, orderID, userID)
+	if err != nil {
+		return payments.PayCoresOrderStatusSnapshot{}, err
+	}
+	return payments.PayCoresOrderStatusSnapshot{
+		OrderID: result.OrderID, ProductID: result.ProductID, Status: result.Status,
+		AmountUSD: result.AmountUSD, PaymentReceived: result.PaymentReceived, BackendReady: result.BackendReady,
+	}, nil
 }
 
 // newConfiguredPayCoresPaymentEntryHandler 只用于受控本地 mock，不允许它隐式启用真实支付。

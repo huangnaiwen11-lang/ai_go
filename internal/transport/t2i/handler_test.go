@@ -107,6 +107,32 @@ func TestHandler幂等键请求指纹冲突返回409(t *testing.T) {
 	}
 }
 
+func TestWriteError保留Admission503原因码(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+		err  error
+		code string
+	}{
+		{name: "依赖不可用", err: creations.ErrAdmissionDependencyUnavailable, code: "SERVICE_UNAVAILABLE"},
+		{name: "发布配置错误", err: creations.ErrAdmissionConfigurationUnavailable, code: "GENERATION_CONFIGURATION_UNAVAILABLE"},
+		{name: "产品配方缺失", err: creations.ErrB2BProductRecipeUnavailable, code: "GENERATION_RECIPE_UNAVAILABLE"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			writeError(recorder, testCase.err)
+			var response struct {
+				Code string `json:"code"`
+			}
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if recorder.Code != http.StatusServiceUnavailable || response.Code != testCase.code {
+				t.Fatalf("status/code = %d/%q, want 503/%q", recorder.Code, response.Code, testCase.code)
+			}
+		})
+	}
+}
+
 func TestHandler模板图编辑使用受控身份与服务端用例(t *testing.T) {
 	editor := &recordingImageEditor{result: &creations.CreateReservedResult{
 		Creation:    &creations.Creation{ID: "550e8400-e29b-41d4-a716-446655440010"},

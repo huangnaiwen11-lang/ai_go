@@ -1,0 +1,1 @@
+{"externalId":"step-1","idempotencyKey":"cling-step:step-1","capability":"text_to_image","model":"ps-auto","input":{"prompt":"海边的灯塔","aspectRatio":"1:1"},"callbackUrl":null,"callbackPolicy":"disabled","resultUrlPolicy":"permanent"}

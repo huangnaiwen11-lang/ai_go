@@ -227,6 +227,8 @@ func newSFWImageEditTemplate(now time.Time) model.TemplateDocument {
 		ContentSurface: string(catalog.ContentSurfaceSFW),
 		Mode:           string(catalog.ProductModeTemplateImage),
 		Enabled:        true,
+		Title:          "本地换装测试模板",
+		CoverURL:       "/legacy/images/homepage/lux-black-marble-portrait.webp",
 		Parameters:     parameters,
 		CreatedAt:      now,
 		UpdatedAt:      now,

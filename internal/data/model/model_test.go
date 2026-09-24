@@ -295,8 +295,11 @@ func Test关键持久化对象的BSON字段名(t *testing.T) {
 				LeaseUntil:     now.Add(time.Minute),
 				LeaseOwner:     "worker-1",
 				LastError:      "safe error summary",
-				CreatedAt:      now,
-				UpdatedAt:      now,
+				// 关注原因与 last_error 分开持久化：Requeue 每轮都会覆盖
+				// last_error，把原因塞进去会让它在重新入队之后消失。
+				AttentionReason: "provider_result_material_upload_budget_exhausted",
+				CreatedAt:       now,
+				UpdatedAt:       now,
 			},
 			fields: []string{
 				"_id",
@@ -310,6 +313,7 @@ func Test关键持久化对象的BSON字段名(t *testing.T) {
 				"lease_until",
 				"lease_owner",
 				"last_error",
+				"attention_reason",
 				"created_at",
 				"updated_at",
 			},
@@ -505,4 +509,37 @@ func Test可选时间字段为空时省略BSON字段(t *testing.T) {
 		t.Fatalf("nil 的 revoked_at 不应被写入 BSON 文档: %#v", decoded)
 	}
 
+}
+
+func TestCreationStepProviderRejectionCause的BSON往返与省略语义(t *testing.T) {
+	withCause := CreationStepDocument{
+		ID: "step-1", CreationID: "creation-1", Sequence: 1, Atom: "text_to_image",
+		SubmitStatus: "submission_failed", ProviderRejectionCause: "provider_payment_required",
+		CreatedAt: time.Date(2026, time.September, 20, 12, 0, 0, 0, time.UTC),
+	}
+	encoded, err := bson.Marshal(withCause)
+	if err != nil {
+		t.Fatalf("序列化带 provider rejection cause 的步骤: %v", err)
+	}
+	var decoded CreationStepDocument
+	if err := bson.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatalf("反序列化带 provider rejection cause 的步骤: %v", err)
+	}
+	if decoded.ProviderRejectionCause != withCause.ProviderRejectionCause {
+		t.Fatalf("provider rejection cause = %q, want %q", decoded.ProviderRejectionCause, withCause.ProviderRejectionCause)
+	}
+
+	withoutCause := withCause
+	withoutCause.ProviderRejectionCause = ""
+	encoded, err = bson.Marshal(withoutCause)
+	if err != nil {
+		t.Fatalf("序列化无 provider rejection cause 的步骤: %v", err)
+	}
+	var raw bson.M
+	if err := bson.Unmarshal(encoded, &raw); err != nil {
+		t.Fatalf("反序列化无 provider rejection cause 的步骤: %v", err)
+	}
+	if _, exists := raw["provider_rejection_cause"]; exists {
+		t.Fatalf("空 provider rejection cause 不应写入 BSON: %#v", raw)
+	}
 }

@@ -3,7 +3,10 @@ package data
 import (
 	"context"
 	"errors"
+	"net"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,6 +78,10 @@ func newLocalMongoClient(t *testing.T) *mongo.Client {
 			Database:             "cling_main",
 			ReplicaSet:           "rs0",
 			TransactionsRequired: true,
+			// 测试跑在 compose 网络里时用 `mongo` 这个服务名，校验要求同时
+			// 声明 docker 本地档。服务名只在容器网络内可解析，所以这一档
+			// 不会让测试有机会连到「外面」—— 它只是承认「现在就是在容器里」。
+			DockerLocalProfile: usesDockerMongoHost(uri),
 		},
 	}); err != nil {
 		t.Fatalf("unsafe MongoDB test URI: %v", err)
@@ -98,4 +105,18 @@ func newLocalMongoClient(t *testing.T) *mongo.Client {
 		t.Fatalf("ping local MongoDB: %v", err)
 	}
 	return client
+}
+
+// usesDockerMongoHost 判断连接串是否指向 compose 的服务名 `mongo`。
+// 解析失败按 false 处理：后面的配置校验会给出真正的错误信息。
+func usesDockerMongoHost(uri string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(uri))
+	if err != nil {
+		return false
+	}
+	host, _, err := net.SplitHostPort(parsed.Host)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(host), "mongo")
 }

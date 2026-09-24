@@ -38,6 +38,29 @@ type queryAuth struct {
 	calls  int
 }
 
+type methodsReader struct {
+	methods []payments.PaymentMethod
+	request payments.PaymentMethodsRequest
+}
+
+func (reader *methodsReader) ListPaymentMethods(_ context.Context, request payments.PaymentMethodsRequest) ([]payments.PaymentMethod, error) {
+	reader.request = request
+	return reader.methods, nil
+}
+
+func TestQueryExternalPaymentMethodsReturnsWebGooglePay(t *testing.T) {
+	methods := &methodsReader{methods: []payments.PaymentMethod{{Provider: "shinningpay", Account: "us_googlepay", Label: "Google Pay", MethodType: "googlepay", Icon: "googlepay"}}}
+	handler := NewHandlerWithQueriesAndMethods(&queryAuth{userID: "user-1"}, &recordingCheckout{}, nil, payments.NewReadUsecase(&queryRepo{}), methods)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/wallet/external-payment-methods?productId=coins_100&country=US", nil))
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "Google Pay") {
+		t.Fatalf("methods response = %d %s", recorder.Code, recorder.Body.String())
+	}
+	if methods.request.UserID != "user-1" || methods.request.ProductID != "coins_100" || methods.request.Country != "US" || methods.request.ClientDevicePlatform != "web" {
+		t.Fatalf("methods request = %#v", methods.request)
+	}
+}
+
 func (auth *queryAuth) Authenticate(*http.Request) (*sessionauth.AuthenticatedIdentity, error) {
 	auth.calls++
 	return &sessionauth.AuthenticatedIdentity{UserID: auth.userID}, auth.err

@@ -90,11 +90,20 @@ func TestMongoSubmission提交CAS只允许一个结案且不覆盖任务ID(t *te
 	}
 }
 
-func TestMongoSubmissionJobID全局唯一CAS拒绝第二步骤(t *testing.T) {
+func TestMongoSubmissionJobID作用域唯一CAS拒绝同路由第二步骤(t *testing.T) {
 	first := newSubmissionMongoFixture(t)
 	second := newSubmissionMongoFixture(t)
 	first.seedDispatching()
 	second.seedDispatching()
+	for _, fixture := range []*submissionMongoFixture{first, second} {
+		result, err := fixture.steps.UpdateOne(fixture.ctx, bson.D{{Key: "_id", Value: fixture.stepID}}, bson.D{{Key: "$set", Value: bson.D{
+			{Key: "provider", Value: creations.LocalExecutionProvider}, {Key: "account_ref", Value: creations.DefaultLocalAccount},
+			{Key: "contract_version", Value: creations.LocalContractVersion}, {Key: "mapping_version", Value: creations.LocalMappingVersion},
+		}}})
+		if err != nil || result.MatchedCount != 1 {
+			t.Fatalf("freeze same local execution route for scoped uniqueness: %v", err)
+		}
+	}
 	firstRepository := NewGenerationSubmissionRepository(first.data)
 	secondRepository := NewGenerationSubmissionRepository(second.data)
 	jobID := "job-" + uuid.NewString()
@@ -162,7 +171,8 @@ func TestMongoSubmissionReconcileCAS允许后续领取(t *testing.T) {
 
 	if err := fixture.runner.WithinTx(fixture.ctx, func(txCtx context.Context) error {
 		return repository.MarkReconciling(txCtx, generation.ReconcilingCommand{
-			EventID: fixture.eventID, LeaseToken: fixture.leaseToken, At: fixture.now,
+			EventID: fixture.eventID, LeaseToken: fixture.leaseToken,
+			At: fixture.now, NextAttemptAt: fixture.now.Add(10 * time.Second),
 		})
 	}); err != nil {
 		t.Fatalf("MarkReconciling() error = %v", err)
@@ -172,8 +182,10 @@ func TestMongoSubmissionReconcileCAS允许后续领取(t *testing.T) {
 	if err := fixture.events.FindOne(fixture.ctx, bson.D{{Key: "_id", Value: fixture.eventID}}).Decode(&event); err != nil {
 		t.Fatalf("读取 reconciling 事件: %v", err)
 	}
-	if event.DeliveryStatus != string(outbox.DeliveryStatusReconciling) || event.LeaseToken != "" || !event.NextAttemptAt.Equal(fixture.now) {
-		t.Fatalf("reconciling 事件 = %#v, want immediately claimable without lease", event)
+	// 再次可领取时刻必须取自命令而不是「当前时刻」：平台给出 Retry-After 时
+	// 立刻放回队列等于无视它，会把 429 变成忙轮询。
+	if event.DeliveryStatus != string(outbox.DeliveryStatusReconciling) || event.LeaseToken != "" || !event.NextAttemptAt.Equal(fixture.now.Add(10*time.Second)) {
+		t.Fatalf("reconciling 事件 = %#v, want reconciling without lease at the commanded time", event)
 	}
 	var step model.CreationStepDocument
 	if err := fixture.steps.FindOne(fixture.ctx, bson.D{{Key: "_id", Value: fixture.stepID}}).Decode(&step); err != nil {
@@ -182,10 +194,14 @@ func TestMongoSubmissionReconcileCAS允许后续领取(t *testing.T) {
 	if step.SubmitStatus != string(creations.StepSubmitStatusReconciling) {
 		t.Fatalf("reconciling step status = %q, want reconciling", step.SubmitStatus)
 	}
+	// 退避窗口内不得被领取，窗口结束后才可以。
+	if blocked, err := NewOutboxRepository(fixture.data).Claim(fixture.ctx, "worker-2", fixture.now, fixture.now.Add(time.Minute)); err != nil || blocked != nil {
+		t.Fatalf("退避窗口内领取 = %#v, %v; want nil, nil", blocked, err)
+	}
 	reclaimed, err := NewOutboxRepository(fixture.data).Claim(
 		fixture.ctx,
 		"worker-2",
-		fixture.now,
+		fixture.now.Add(10*time.Second),
 		fixture.now.Add(time.Minute),
 	)
 	if err != nil {
@@ -235,7 +251,7 @@ func TestMongoSubmission过期租约接管后只查询不重复提交(t *testing
 		NewGenerationSubmissionRepository(fixture.data),
 		ledger.NewUsecase(NewLedgerRepository(fixture.data), fixture.runner),
 		fixture.runner,
-		client,
+		worker.LocalClientRouter{Local: client},
 		nil,
 		"worker-recovery",
 		func() time.Time { return workerNow },
@@ -297,6 +313,55 @@ func TestMongoSubmission拒绝CAS只写创作步骤状态(t *testing.T) {
 	}
 	if event.DeliveryStatus != string(outbox.DeliveryStatusDispatching) || event.LeaseToken != fixture.leaseToken {
 		t.Fatalf("MarkRejected() 改写了 outbox 结案顺序: %#v", event)
+	}
+}
+
+// PAYMENT_REQUIRED 是唯一允许写入的供应商拒绝原因。它必须与步骤终态一起在
+// 外层事务中持久化，而账本的用户可见 reason 仍由 Worker 保持原有口径。
+func TestMongoSubmission拒绝CAS持久化PaymentRequired原因(t *testing.T) {
+	fixture := newSubmissionMongoFixture(t)
+	repository := NewGenerationSubmissionRepository(fixture.data)
+	fixture.seedDispatching()
+
+	if err := fixture.runner.WithinTx(fixture.ctx, func(txCtx context.Context) error {
+		return repository.MarkRejected(txCtx, generation.RejectedCommand{
+			EventID: fixture.eventID, LeaseToken: fixture.leaseToken, At: fixture.now,
+			ProviderRejectionCause: generation.ProviderRejectionCausePaymentRequired,
+		})
+	}); err != nil {
+		t.Fatalf("MarkRejected() error = %v", err)
+	}
+
+	var step model.CreationStepDocument
+	if err := fixture.steps.FindOne(fixture.ctx, bson.D{{Key: "_id", Value: fixture.stepID}}).Decode(&step); err != nil {
+		t.Fatalf("读取失败步骤: %v", err)
+	}
+	if step.ProviderRejectionCause != string(generation.ProviderRejectionCausePaymentRequired) {
+		t.Fatalf("provider rejection cause = %q, want %q", step.ProviderRejectionCause, generation.ProviderRejectionCausePaymentRequired)
+	}
+}
+
+func TestMongoSubmission普通拒绝不写或清除Provider原因(t *testing.T) {
+	fixture := newSubmissionMongoFixture(t)
+	repository := NewGenerationSubmissionRepository(fixture.data)
+	fixture.seedDispatching()
+
+	// 空 cause 不能写空字符串：否则重入会抹掉之前已审计的 PAYMENT_REQUIRED。
+	if _, err := fixture.steps.UpdateOne(fixture.ctx, bson.D{{Key: "_id", Value: fixture.stepID}}, bson.D{{Key: "$set", Value: bson.D{{Key: "provider_rejection_cause", Value: string(generation.ProviderRejectionCausePaymentRequired)}}}}); err != nil {
+		t.Fatalf("预置 provider rejection cause: %v", err)
+	}
+	if err := fixture.runner.WithinTx(fixture.ctx, func(txCtx context.Context) error {
+		return repository.(*mongoGenerationSubmissionRepository).updateStepStatusWithCause(txCtx, fixture.creationID, fixture.stepID, creations.StepSubmitStatusSubmissionFailed, "")
+	}); err != nil {
+		t.Fatalf("updateStepStatusWithCause() error = %v", err)
+	}
+
+	var raw bson.M
+	if err := fixture.steps.FindOne(fixture.ctx, bson.D{{Key: "_id", Value: fixture.stepID}}).Decode(&raw); err != nil {
+		t.Fatalf("读取失败步骤: %v", err)
+	}
+	if got, _ := raw["provider_rejection_cause"].(string); got != string(generation.ProviderRejectionCausePaymentRequired) {
+		t.Fatalf("空 cause 改写了已有原因: %#v", raw)
 	}
 }
 
@@ -395,7 +460,7 @@ func TestMongoSubmission命令冲突矩阵CAS(t *testing.T) {
 		{
 			name: "reconciling 错误租约",
 			call: func(repository generation.SubmissionStore, fixture *submissionMongoFixture, ctx context.Context) error {
-				return repository.MarkReconciling(ctx, generation.ReconcilingCommand{EventID: fixture.eventID, LeaseToken: "wrong-lease", At: fixture.now})
+				return repository.MarkReconciling(ctx, generation.ReconcilingCommand{EventID: fixture.eventID, LeaseToken: "wrong-lease", At: fixture.now, NextAttemptAt: fixture.now.Add(time.Minute)})
 			},
 		},
 		{
@@ -419,7 +484,7 @@ func TestMongoSubmission命令冲突矩阵CAS(t *testing.T) {
 				fixture.setStepStatus(creations.StepSubmitStatusSubmitted)
 			},
 			call: func(repository generation.SubmissionStore, fixture *submissionMongoFixture, ctx context.Context) error {
-				return repository.MarkReconciling(ctx, generation.ReconcilingCommand{EventID: fixture.eventID, LeaseToken: fixture.leaseToken, At: fixture.now})
+				return repository.MarkReconciling(ctx, generation.ReconcilingCommand{EventID: fixture.eventID, LeaseToken: fixture.leaseToken, At: fixture.now, NextAttemptAt: fixture.now.Add(time.Minute)})
 			},
 		},
 		{

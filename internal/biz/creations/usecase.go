@@ -50,10 +50,13 @@ type Usecase struct {
 	events        outbox.Writer
 	recipes       DeferredRecipeWriter
 	tx            shared.TxRunner
+	admissions    AdmissionResolver
 	clock         func() time.Time
 }
 
 // NewUsecase 创建创作占位与预留编排用例。
+// admissions 为 nil 表示运行配置尚未授权 B2B：此时新步骤只冻结本地归属，
+// 且任何已编译的公开配方都会被拒绝，不会静默降级为本地执行。
 func NewUsecase(
 	users userReader,
 	subscriptions entitlement.SubscriptionReader,
@@ -62,8 +65,9 @@ func NewUsecase(
 	reservations reservationUsecase,
 	events outbox.Writer,
 	tx shared.TxRunner,
+	admissions AdmissionResolver,
 ) *Usecase {
-	return newUsecase(users, subscriptions, entitlements, creations, deferredRecipeWriterFor(creations), reservations, events, tx, func() time.Time {
+	return newUsecase(users, subscriptions, entitlements, creations, deferredRecipeWriterFor(creations), reservations, events, tx, admissions, func() time.Time {
 		return time.Now().UTC()
 	})
 }
@@ -78,6 +82,7 @@ func NewUsecaseWithClock(
 	reservations reservationUsecase,
 	events outbox.Writer,
 	tx shared.TxRunner,
+	admissions AdmissionResolver,
 	clock func() time.Time,
 ) *Usecase {
 	if clock == nil {
@@ -85,7 +90,7 @@ func NewUsecaseWithClock(
 			return time.Now().UTC()
 		}
 	}
-	return newUsecase(users, subscriptions, entitlements, creations, deferredRecipeWriterFor(creations), reservations, events, tx, clock)
+	return newUsecase(users, subscriptions, entitlements, creations, deferredRecipeWriterFor(creations), reservations, events, tx, admissions, clock)
 }
 
 func newUsecase(
@@ -97,6 +102,7 @@ func newUsecase(
 	reservations reservationUsecase,
 	events outbox.Writer,
 	tx shared.TxRunner,
+	admissions AdmissionResolver,
 	clock func() time.Time,
 ) *Usecase {
 	return &Usecase{
@@ -108,6 +114,7 @@ func newUsecase(
 		reservations:  reservations,
 		events:        events,
 		tx:            tx,
+		admissions:    admissionResolverOrDefault(admissions),
 		clock:         clock,
 	}
 }
@@ -129,7 +136,11 @@ func (usecase *Usecase) CreateReserved(ctx context.Context, request CreateReserv
 	if err := validateCreateReservedRequest(request); err != nil {
 		return nil, err
 	}
-	if request.InitialSubmission != nil && usecase.events == nil {
+	if request.InitialSubmission != nil && request.B2BSubmission != nil {
+		// 两种合同不得同时编译：那说明调用方自己也不确定该发给哪个 provider。
+		return nil, ErrInvalidCreateCommand
+	}
+	if (request.InitialSubmission != nil || request.B2BSubmission != nil) && usecase.events == nil {
 		return nil, ErrInvalidCreateCommand
 	}
 	if err := ValidatePlan(request.Product, request.Plan); err != nil {
@@ -146,7 +157,11 @@ func (usecase *Usecase) CreateReserved(ctx context.Context, request CreateReserv
 	if err != nil {
 		return nil, err
 	}
-	if request.Product.Output == entitlement.ProductOutputVideo && snapshot == nil {
+	recipe, err := compileB2BSubmission(request)
+	if err != nil {
+		return nil, err
+	}
+	if request.Product.Output == entitlement.ProductOutputVideo && snapshot == nil && recipe == nil {
 		return nil, ErrInvalidCreateCommand
 	}
 
@@ -164,10 +179,18 @@ func (usecase *Usecase) CreateReserved(ctx context.Context, request CreateReserv
 		return nil, err
 	}
 	var submissionPayload []byte
-	if snapshot != nil {
+	switch {
+	case snapshot != nil:
 		submissionPayload, err = snapshot.MarshalSubmissionPayload()
 		if err != nil {
 			return nil, err
+		}
+	case recipe != nil:
+		// 公开配方是 B2B 首步骤的冻结载荷，与本地快照占同一个发件箱载荷槽位；
+		// 提交器按步骤冻结的 provider 决定用哪种合同解析它。
+		submissionPayload, err = recipe.Marshal()
+		if err != nil {
+			return nil, ErrInvalidCreateCommand
 		}
 	}
 	if existing, err := usecase.creations.FindByIdempotencyKey(ctx, request.IdempotencyKey); err != nil {
@@ -178,7 +201,13 @@ func (usecase *Usecase) CreateReserved(ctx context.Context, request CreateReserv
 
 	// 事务回调可能被 MongoDB 重试，业务时刻必须在进入事务前固定一次。
 	businessNow := usecase.clock().UTC()
-	creation, steps := newCreationFacts(request, fingerprint, businessNow)
+	// 归属同样在事务前冻结。已发布目录版本不可变，因此这里定下的版本号在事务内
+	// 以及后续任何重放时刻都对应同一份映射；事务只负责把它写下去。
+	admissions, err := usecase.resolveAdmissions(ctx, request, recipe, deferredRecipe)
+	if err != nil {
+		return nil, err
+	}
+	creation, steps := newCreationFacts(request, admissions, fingerprint, businessNow)
 	if deferredRecipe != nil {
 		deferredRecipe.CreatedAt = businessNow
 		deferredRecipe.UpdatedAt = businessNow
@@ -234,7 +263,7 @@ func (usecase *Usecase) CreateReserved(ctx context.Context, request CreateReserv
 		}
 		result.Reservation = reservation
 		result.DiamondBalanceAfter = balanceAfter
-		if snapshot != nil {
+		if len(submissionPayload) > 0 {
 			firstReadyStep, err := firstReadyStep(steps)
 			if err != nil {
 				return err
@@ -271,13 +300,26 @@ func (usecase *Usecase) CreateReserved(ctx context.Context, request CreateReserv
 func compileDeferredRecipe(request CreateReservedRequest) (*DeferredRecipe, error) {
 	isTwoStepTextToVideo := request.Product.Output == entitlement.ProductOutputVideo && len(request.Plan) == 2 && request.Plan[0].Atom == AtomTextToImage && request.Plan[1].Atom == AtomImageToVideo
 	if !isTwoStepTextToVideo {
-		if request.DeferredImageToVideo != nil {
+		if request.DeferredImageToVideo != nil || request.DeferredB2BImageToVideo != nil {
 			return nil, ErrInvalidCreateCommand
 		}
 		return nil, nil
 	}
-	if request.DeferredImageToVideo == nil {
+	if (request.DeferredImageToVideo == nil) == (request.DeferredB2BImageToVideo == nil) {
 		return nil, ErrInvalidCreateCommand
+	}
+	if request.DeferredB2BImageToVideo != nil {
+		if request.InitialSubmission != nil || request.B2BSubmission == nil {
+			return nil, ErrInvalidCreateCommand
+		}
+		deferred, err := request.DeferredB2BImageToVideo.Normalize()
+		if err != nil {
+			return nil, ErrInvalidCreateCommand
+		}
+		return &DeferredRecipe{
+			Atom: AtomImageToVideo, Protocol: DeferredRecipeProtocolB2B,
+			B2B: &deferred, Digest: deferred.Digest, Status: DeferredRecipeStatusPending,
+		}, nil
 	}
 	compiled, err := executionv2.CompileDeferredImageToVideo(request.DeferredImageToVideo.ModelSKU, request.DeferredImageToVideo.InputTemplate)
 	if err != nil {
@@ -285,6 +327,7 @@ func compileDeferredRecipe(request CreateReservedRequest) (*DeferredRecipe, erro
 	}
 	return &DeferredRecipe{
 		Atom:          AtomImageToVideo,
+		Protocol:      DeferredRecipeProtocolExecutionV2,
 		ModelSKU:      compiled.ModelSKU(),
 		InputTemplate: compiled.FrozenInputTemplate(),
 		Digest:        compiled.Digest,
@@ -292,8 +335,93 @@ func compileDeferredRecipe(request CreateReservedRequest) (*DeferredRecipe, erro
 	}, nil
 }
 
+// compileB2BSubmission 规范化服务端模板编译器给出的公开产品配方。
+// 它不判断归属：归属由 AdmissionResolver 决定，这里只保证字节可以被冻结。
+func compileB2BSubmission(request CreateReservedRequest) (*B2BProductRecipe, error) {
+	if request.B2BSubmission == nil {
+		return nil, nil
+	}
+	normalized, err := request.B2BSubmission.Normalize()
+	if err != nil {
+		return nil, ErrInvalidCreateCommand
+	}
+	return &normalized, nil
+}
+
+// resolveAdmissions 冻结每个新步骤的执行归属。
+//
+// 失败一律向上返回，不提供任何「解析不出来就走本地」的兜底：那会把 B2B 请求
+// 静默跑成本地模拟器，并让用户在不知情的情况下拿到本地生成结果。
+func (usecase *Usecase) resolveAdmissions(ctx context.Context, request CreateReservedRequest, recipe *B2BProductRecipe, deferred *DeferredRecipe) ([]StepAdmission, error) {
+	var deferredB2B *DeferredB2BImageToVideo
+	if deferred != nil && deferred.Protocol == DeferredRecipeProtocolB2B {
+		deferredB2B = deferred.B2B
+	}
+	if recipe != nil && len(request.Plan) != 1 && deferredB2B == nil {
+		// 两步 B2B 计划必须同时有一份未绑定的第二阶段公开配方；仅有第一步
+		// 配方会把用户带进一个永远无法提交的 blocked 步骤，因此仍 fail closed。
+		return nil, ErrB2BProductRecipeUnavailable
+	}
+	admissionRequests := make([]AdmissionRequest, 0, len(request.Plan))
+	for index, plan := range request.Plan {
+		admissionRequest := AdmissionRequest{
+			UserID:          request.UserID,
+			TemplateID:      request.TemplateID,
+			TemplateVersion: request.TemplateVersion,
+			Product:         request.Product,
+			Atom:            plan.Atom,
+			Sequence:        plan.Sequence,
+		}
+		if index == 0 {
+			admissionRequest.B2B = recipe
+		} else if deferredB2B != nil && index == 1 {
+			admissionRequest.B2B = &deferredB2B.Recipe
+			admissionRequest.DeferredB2B = true
+		}
+		admissionRequests = append(admissionRequests, admissionRequest)
+	}
+	admissions := make([]StepAdmission, 0, len(admissionRequests))
+	if batch, ok := usecase.admissions.(BatchAdmissionResolver); ok {
+		resolved, err := batch.ResolveAdmissions(ctx, admissionRequests)
+		if err != nil {
+			return nil, err
+		}
+		if len(resolved) != len(admissionRequests) {
+			return nil, ErrAdmissionConfigurationUnavailable
+		}
+		admissions = append(admissions, resolved...)
+	} else {
+		for _, admissionRequest := range admissionRequests {
+			resolved, err := usecase.admissions.ResolveAdmission(ctx, admissionRequest)
+			if err != nil {
+				return nil, err
+			}
+			normalized, err := resolved.Normalize()
+			if err != nil {
+				return nil, err
+			}
+			admissions = append(admissions, normalized)
+		}
+	}
+	for index, admission := range admissions {
+		normalized, err := admission.Normalize()
+		if err != nil {
+			return nil, err
+		}
+		admissions[index] = normalized
+	}
+	// 编译器已经按公开合同编译，但解析结果不是 B2B：这是静默降级，必须拒绝。
+	if recipe != nil && admissions[0].B2B == nil {
+		return nil, ErrB2BProductRecipeUnavailable
+	}
+	if deferredB2B != nil && (len(admissions) != 2 || admissions[1].B2B == nil || admissions[1].Route.Provider != PolarStarB2BProvider) {
+		return nil, ErrB2BProductRecipeUnavailable
+	}
+	return admissions, nil
+}
+
 func (usecase *Usecase) validateDependencies() error {
-	if usecase == nil || usecase.users == nil || usecase.subscriptions == nil || usecase.entitlements == nil || usecase.creations == nil || usecase.reservations == nil || usecase.tx == nil || usecase.clock == nil {
+	if usecase == nil || usecase.users == nil || usecase.subscriptions == nil || usecase.entitlements == nil || usecase.creations == nil || usecase.reservations == nil || usecase.tx == nil || usecase.admissions == nil || usecase.clock == nil {
 		return ErrInvalidCreateCommand
 	}
 	return nil
@@ -362,7 +490,9 @@ func (usecase *Usecase) resolveExisting(ctx context.Context, existing *Creation,
 	return &CreateReservedResult{Creation: existing, Steps: steps, Reservation: reservation, DiamondBalanceAfter: balanceAfter}, nil
 }
 
-func newCreationFacts(request CreateReservedRequest, fingerprint string, now time.Time) (*Creation, []CreationStep) {
+// newCreationFacts 用已冻结的归属构造创作与全部步骤。
+// admissions 与 request.Plan 一一对应，由 resolveAdmissions 保证。
+func newCreationFacts(request CreateReservedRequest, admissions []StepAdmission, fingerprint string, now time.Time) (*Creation, []CreationStep) {
 	creationID := uuid.NewString()
 	creation := &Creation{
 		ID:                   creationID,
@@ -389,6 +519,7 @@ func newCreationFacts(request CreateReservedRequest, fingerprint string, now tim
 			CreationID:   creationID,
 			Sequence:     plan.Sequence,
 			Atom:         plan.Atom,
+			Route:        admissions[index].Route,
 			SubmitStatus: status,
 			CreatedAt:    now,
 		})

@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
-const paymentCallbackNonceTTL = 2 * time.Minute
+const (
+	paymentCallbackNonceTTL             = 2 * time.Minute
+	paymentCallbackOrderBindGracePeriod = 50 * time.Millisecond
+)
 
 var (
 	// ErrInvalidVerifiedPaymentConfirmation 表示验签边界没有产出可用于本地结算的完整关联。
@@ -86,10 +89,33 @@ func (usecase *ConfirmedCallbackUsecase) Handle(ctx context.Context, confirmatio
 	if err != nil {
 		return ApplyResult{}, err
 	}
+	// PayCores 可能在建单响应返回、Go 将真实渠道订单号绑定到本地订单之前完成支付并投递回调。
+	// nonce 已经消费，安全门禁不回滚；这里只对“尚未查到”做一次短暂且可取消的补查，
+	// 不重试仓储错误，也不把长期恢复职责从 PayCores 的持久 outbox 搬进 ACK 路径。
+	if order == nil {
+		if err := waitForPaymentCallbackOrderBind(ctx); err != nil {
+			return ApplyResult{}, err
+		}
+		order, err = usecase.orders.FindOrderByProviderOrder(ctx, ProviderPayCores, confirmation.OrderID)
+		if err != nil {
+			return ApplyResult{}, err
+		}
+	}
 	if order == nil || blank(order.ID) {
 		return ApplyResult{}, ErrPaymentOrderNotFound
 	}
 	return usecase.settler.SettleVerifiedOrder(ctx, verifiedOrderSettlement(confirmation, order.ID, businessAt))
+}
+
+func waitForPaymentCallbackOrderBind(ctx context.Context) error {
+	timer := time.NewTimer(paymentCallbackOrderBindGracePeriod)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 // verifiedOrderSettlement 显式完成受控关联到既有本地订单结算命令的映射。

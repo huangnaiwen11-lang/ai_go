@@ -18,10 +18,11 @@ import (
 )
 
 type mongoGenerationSubmissionRepository struct {
-	creations *mongo.Collection
-	steps     *mongo.Collection
-	events    *mongo.Collection
-	users     *mongo.Collection
+	creations    *mongo.Collection
+	steps        *mongo.Collection
+	events       *mongo.Collection
+	users        *mongo.Collection
+	reservations *mongo.Collection
 }
 
 // NewGenerationSubmissionRepository 返回生成提交状态仓储，并复用调用方的事务上下文。
@@ -30,10 +31,11 @@ func NewGenerationSubmissionRepository(data *Data) generation.SubmissionStore {
 		return &mongoGenerationSubmissionRepository{}
 	}
 	return &mongoGenerationSubmissionRepository{
-		creations: data.database.Collection(schema.CollectionCreations),
-		steps:     data.database.Collection(schema.CollectionCreationSteps),
-		events:    data.database.Collection(schema.CollectionOutboxEvents),
-		users:     data.database.Collection(schema.CollectionUsers),
+		creations:    data.database.Collection(schema.CollectionCreations),
+		steps:        data.database.Collection(schema.CollectionCreationSteps),
+		events:       data.database.Collection(schema.CollectionOutboxEvents),
+		users:        data.database.Collection(schema.CollectionUsers),
+		reservations: data.database.Collection(schema.CollectionReservations),
 	}
 }
 
@@ -50,24 +52,30 @@ func (repository *mongoGenerationSubmissionRepository) ClaimedSubmission(ctx con
 		return nil, err
 	}
 	var step model.CreationStepDocument
-	err = repository.steps.FindOne(ctx, bson.D{
-		{Key: "_id", Value: stepID},
-		{Key: "creation_id", Value: document.AggregateID},
-		{Key: "submit_status", Value: bson.D{{Key: "$in", Value: bson.A{
-			string(creations.StepSubmitStatusReady),
-			string(creations.StepSubmitStatusReconciling),
-		}}}},
-	}).Decode(&step)
+	err = repository.steps.FindOne(ctx, recoverableSubmissionStepFilter(document.AggregateID, stepID)).Decode(&step)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, generation.ErrSubmissionConflict
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read claimed submission step: %w", err)
 	}
+	if step.SubmitStatus == "submitting" {
+		// 已授权步骤只能从有效的冻结意图恢复；不能把缺失/损坏意图当首次提交。
+		intent, err := repository.ReadProviderSubmission(ctx, stepID)
+		if err != nil {
+			return nil, err
+		}
+		if intent == nil {
+			return nil, generation.ErrSubmissionConflict
+		}
+	}
 	var creation model.CreationDocument
 	err = repository.creations.FindOne(ctx, bson.D{
 		{Key: "_id", Value: document.AggregateID},
-		{Key: "status", Value: string(creations.CreationStatusPendingSubmission)},
+		{Key: "status", Value: bson.D{{Key: "$in", Value: bson.A{
+			string(creations.CreationStatusPendingSubmission),
+			string(creations.CreationStatusCancelling),
+		}}}},
 	}).Decode(&creation)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, generation.ErrSubmissionConflict
@@ -86,13 +94,21 @@ func (repository *mongoGenerationSubmissionRepository) ClaimedSubmission(ctx con
 	if user.ContentAccess != identity.ContentAccessStandard && user.ContentAccess != identity.ContentAccessReviewRestricted {
 		return nil, generation.ErrSubmissionConflict
 	}
+	route, err := creations.NormalizeExecutionRoute(creations.ExecutionRoute{Provider: step.Provider, AccountRef: step.AccountRef, ContractVersion: step.ContractVersion, MappingVersion: step.MappingVersion})
+	if err != nil {
+		return nil, generation.ErrSubmissionConflict
+	}
 	return &generation.SubmissionRecord{
+		Route:            route,
 		EventID:          document.ID,
 		CreationID:       document.AggregateID,
 		StepID:           step.ID,
+		CreationStatus:   creations.CreationStatus(creation.Status),
 		UserID:           creation.UserID,
 		ContentAccess:    user.ContentAccess,
 		LeaseToken:       document.LeaseToken,
+		LeaseOwner:       document.LeaseOwner,
+		Fence:            document.AttemptCount,
 		LeaseUntil:       document.LeaseUntil,
 		ExecutionPayload: append([]byte(nil), document.Payload...),
 	}, nil
@@ -167,6 +183,8 @@ func (repository *mongoGenerationSubmissionRepository) MarkSubmitted(ctx context
 }
 
 // MarkReconciling 将未知结果退回可再次领取的核对状态，并清除已完成的租约。
+// 再次可领取的时刻取自命令，而不是「当前时刻」：提交结果未知往往伴随
+// 429/503 的 Retry-After，立刻放回队列等于无视平台给出的等待要求。
 func (repository *mongoGenerationSubmissionRepository) MarkReconciling(ctx context.Context, command generation.ReconcilingCommand) error {
 	if err := repository.ready(); err != nil {
 		return err
@@ -192,7 +210,7 @@ func (repository *mongoGenerationSubmissionRepository) MarkReconciling(ctx conte
 	}, bson.D{
 		{Key: "$set", Value: bson.D{
 			{Key: "delivery_status", Value: string(outbox.DeliveryStatusReconciling)},
-			{Key: "next_attempt_at", Value: normalized.At},
+			{Key: "next_attempt_at", Value: normalized.NextAttemptAt},
 			{Key: "updated_at", Value: normalized.At},
 		}},
 		{Key: "$unset", Value: bson.D{
@@ -223,7 +241,7 @@ func (repository *mongoGenerationSubmissionRepository) MarkRejected(ctx context.
 	if err != nil {
 		return err
 	}
-	if err := repository.updateStepStatus(ctx, event.AggregateID, stepID, creations.StepSubmitStatusSubmissionFailed); err != nil {
+	if err := repository.updateStepStatusWithCause(ctx, event.AggregateID, stepID, creations.StepSubmitStatusSubmissionFailed, normalized.ProviderRejectionCause); err != nil {
 		return err
 	}
 	result, err := repository.creations.UpdateOne(ctx, bson.D{
@@ -301,14 +319,7 @@ func (repository *mongoGenerationSubmissionRepository) updateStepSubmitted(ctx c
 }
 
 func (repository *mongoGenerationSubmissionRepository) updateStepStatus(ctx context.Context, creationID, stepID string, status creations.StepSubmitStatus) error {
-	result, err := repository.steps.UpdateOne(ctx, bson.D{
-		{Key: "_id", Value: stepID},
-		{Key: "creation_id", Value: creationID},
-		{Key: "submit_status", Value: bson.D{{Key: "$in", Value: bson.A{
-			string(creations.StepSubmitStatusReady),
-			string(creations.StepSubmitStatusReconciling),
-		}}}},
-	}, bson.D{{Key: "$set", Value: bson.D{{Key: "submit_status", Value: string(status)}}}})
+	result, err := repository.steps.UpdateOne(ctx, recoverableSubmissionStepFilter(creationID, stepID), bson.D{{Key: "$set", Value: bson.D{{Key: "submit_status", Value: string(status)}}}})
 	if err != nil {
 		return fmt.Errorf("update creation step submission status: %w", err)
 	}
@@ -316,6 +327,37 @@ func (repository *mongoGenerationSubmissionRepository) updateStepStatus(ctx cont
 		return generation.ErrSubmissionConflict
 	}
 	return nil
+}
+
+// updateStepStatusWithCause 仅供 MarkRejected 使用。空 cause 刻意不写入/清除已有值：
+// 重入或并发终态不能抹掉已经持久化的 provider_payment_required 事实。
+func (repository *mongoGenerationSubmissionRepository) updateStepStatusWithCause(ctx context.Context, creationID, stepID string, status creations.StepSubmitStatus, cause generation.ProviderRejectionCause) error {
+	set := bson.D{{Key: "submit_status", Value: string(status)}}
+	if cause != "" {
+		set = append(set, bson.E{Key: "provider_rejection_cause", Value: string(cause)})
+	}
+	result, err := repository.steps.UpdateOne(ctx, recoverableSubmissionStepFilter(creationID, stepID), bson.D{{Key: "$set", Value: set}})
+	if err != nil {
+		return fmt.Errorf("update creation step submission status with cause: %w", err)
+	}
+	if result.MatchedCount != 1 {
+		return generation.ErrSubmissionConflict
+	}
+	return nil
+}
+
+// local 的状态集合不变。只有尚未绑定任务号、带 B2B 提交意图的 submitting
+// 才能进入恢复路径；读取时还需重验冻结请求，授权仍由独立事务 CAS 控制。
+func recoverableSubmissionStepFilter(creationID, stepID string) bson.D {
+	return bson.D{
+		{Key: "_id", Value: stepID}, {Key: "creation_id", Value: creationID},
+		{Key: "$or", Value: bson.A{
+			bson.M{"submit_status": bson.M{"$in": bson.A{string(creations.StepSubmitStatusReady), string(creations.StepSubmitStatusReconciling)}}},
+			bson.M{"submit_status": "submitting", "provider": creations.PolarStarB2BProvider,
+				"contract_version": creations.B2BContractVersion, "submission_intent": bson.M{"$type": "object"},
+				"external_execution_id": bson.M{"$exists": false}},
+		}},
+	}
 }
 
 func (repository *mongoGenerationSubmissionRepository) findDispatchingEvent(ctx context.Context, eventID, leaseToken string) (model.OutboxEventDocument, string, error) {

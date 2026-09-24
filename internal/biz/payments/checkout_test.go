@@ -123,24 +123,137 @@ func TestCreatePayCoresCheckout冻结商品并绑定渠道订单号(t *testing.T
 	}
 }
 
+func TestCreatePayCoresCheckoutForChannel保留WebGooglePay渠道(t *testing.T) {
+	repository := newCheckoutMemoryRepository()
+	repository.products["coins_100"] = []PaymentProduct{{ID: "coins_100", Version: 1, Label: "100 Diamonds", DiamondAmount: 100, AmountCents: 999, Currency: "USD", PublishStatus: ProductPublishStatusPublished}}
+	creator := &recordingPayCoresCreator{result: PayCoresCheckoutResult{ProviderOrderID: "pco-google", CheckoutURL: "https://checkout.example.test/pco-google"}}
+	service := NewCheckoutServiceWithPayCores(repository, creator, fixedPaymentTime)
+	service.newOrderID = func() (string, error) { return "local-google-web", nil }
+	if _, err := service.CreatePayCoresCheckoutForChannel(context.Background(), "user-1", "coins_100", PaymentChannelSelection{Provider: "shinningpay", Account: "us_googlepay", ClientDevicePlatform: "web"}); err != nil {
+		t.Fatal(err)
+	}
+	if creator.request.Provider != "shinningpay" || creator.request.Account != "us_googlepay" || creator.request.ClientDevicePlatform != "web" {
+		t.Fatalf("channel request = %#v", creator.request)
+	}
+}
+
+func TestCreatePayCoresCheckoutForChannel复用ClientRequestID订单(t *testing.T) {
+	repository := newCheckoutMemoryRepository()
+	repository.products["coins_100"] = []PaymentProduct{{ID: "coins_100", Version: 1, Label: "100 Diamonds", DiamondAmount: 100, AmountCents: 999, Currency: "USD", PublishStatus: ProductPublishStatusPublished}}
+	creator := &recordingPayCoresCreator{result: PayCoresCheckoutResult{ProviderOrderID: "pco-idempotent", CheckoutURL: "https://checkout.example.test/pco-idempotent"}}
+	service := NewCheckoutServiceWithPayCores(repository, creator, fixedPaymentTime)
+	requestID := "web-checkout-retry-1"
+	first, err := service.CreatePayCoresCheckoutForChannel(context.Background(), "user-1", "coins_100", PaymentChannelSelection{Provider: "shinningpay", Account: "us_googlepay", ClientDevicePlatform: "web", ClientRequestID: requestID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := service.CreatePayCoresCheckoutForChannel(context.Background(), "user-1", "coins_100", PaymentChannelSelection{Provider: "shinningpay", Account: "us_googlepay", ClientDevicePlatform: "web", ClientRequestID: requestID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Order.ID != second.Order.ID || second.Order.ProviderOrderID != "pco-idempotent" || creator.request.ClientRequestID != requestID {
+		t.Fatalf("重试未复用订单/幂等键：first=%#v second=%#v request=%#v", first, second, creator.request)
+	}
+}
+
+func TestCreatePayCoresCheckoutForChannel拒绝同一ClientRequestID切换渠道(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		selection PaymentChannelSelection
+	}{
+		{name: "provider", selection: PaymentChannelSelection{Provider: "other-provider", Account: "us_googlepay", ClientDevicePlatform: "web"}},
+		{name: "account", selection: PaymentChannelSelection{Provider: "shinningpay", Account: "other-account", ClientDevicePlatform: "web"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repository := newCheckoutMemoryRepository()
+			repository.products["coins_100"] = []PaymentProduct{{ID: "coins_100", Version: 1, Label: "100 Diamonds", DiamondAmount: 100, AmountCents: 999, Currency: "USD", PublishStatus: ProductPublishStatusPublished}}
+			creator := &recordingPayCoresCreator{result: PayCoresCheckoutResult{ProviderOrderID: "pco-idempotent", CheckoutURL: "https://checkout.example.test/pco-idempotent"}}
+			service := NewCheckoutServiceWithPayCores(repository, creator, fixedPaymentTime)
+			requestID := "web-checkout-channel-immutable"
+			if _, err := service.CreatePayCoresCheckoutForChannel(context.Background(), "user-1", "coins_100", PaymentChannelSelection{Provider: "shinningpay", Account: "us_googlepay", ClientDevicePlatform: "web", ClientRequestID: requestID}); err != nil {
+				t.Fatal(err)
+			}
+
+			test.selection.ClientRequestID = requestID
+			_, err := service.CreatePayCoresCheckoutForChannel(context.Background(), "user-1", "coins_100", test.selection)
+			if creator.calls != 1 {
+				t.Errorf("PayCores 建单次数 = %d，期望渠道冲突在第二次外部调用前被拒绝", creator.calls)
+			}
+			if !errors.Is(err, ErrPaymentOrderMismatch) {
+				t.Errorf("切换渠道 error = %v，期望 ErrPaymentOrderMismatch", err)
+			}
+		})
+	}
+}
+
+func TestCreatePayCoresCheckout重复本地订单的绑定CAS被同值请求抢先完成时收敛成功(t *testing.T) {
+	repository := newCheckoutMemoryRepository()
+	originalProduct := PaymentProduct{ID: "coins_100", Version: 1, Label: "100 Diamonds", DiamondAmount: 100, AmountCents: 999, Currency: "USD", PublishStatus: ProductPublishStatusPublished}
+	repository.products["coins_100"] = []PaymentProduct{
+		originalProduct,
+		{ID: "coins_100", Version: 2, Label: "200 Diamonds", DiamondAmount: 200, AmountCents: 1999, Currency: "USD", PublishStatus: ProductPublishStatusPublished},
+	}
+	requestID := "web-checkout-cas-race"
+	orderID := clientPaymentOrderID("user-1", "coins_100", requestID)
+	originalOrder, err := FreezeOrder(CreateOrderInput{OrderID: orderID, UserID: "user-1", Provider: ProviderPayCores, ProviderOrderID: "local-paycores-" + orderID}, originalProduct, fixedPaymentTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository.orders[orderID] = *originalOrder
+	repository.bindRaceProviderOrderID = "pco-idempotent"
+	creator := &recordingPayCoresCreator{result: PayCoresCheckoutResult{ProviderOrderID: "pco-idempotent", CheckoutURL: "https://checkout.example.test/pco-idempotent"}}
+	service := NewCheckoutServiceWithPayCores(repository, creator, fixedPaymentTime)
+
+	checkout, err := service.CreatePayCoresCheckoutForChannel(context.Background(), "user-1", "coins_100", PaymentChannelSelection{ClientRequestID: requestID})
+	if err != nil {
+		t.Fatalf("CreatePayCoresCheckout() error = %v", err)
+	}
+	if checkout.Order.ProviderOrderID != "pco-idempotent" || checkout.Order.ProductVersion != 1 || checkout.Order.AmountCents != 999 || checkout.Order.DiamondAmount != 100 || creator.request.AmountCents != 999 || creator.request.Credits != 100 {
+		t.Fatalf("CAS 收敛结果 = %#v，请求 = %#v，期望复用 v1 冻结订单且不改金额与钻石", checkout.Order, creator.request)
+	}
+}
+
+func TestCreatePayCoresCheckout绑定CAS失败且渠道订单号不同时拒绝(t *testing.T) {
+	repository := newCheckoutMemoryRepository()
+	repository.products["coins_100"] = []PaymentProduct{{ID: "coins_100", Version: 1, Label: "100 Diamonds", DiamondAmount: 100, AmountCents: 999, Currency: "USD", PublishStatus: ProductPublishStatusPublished}}
+	repository.bindRaceProviderOrderID = "pco-other"
+	creator := &recordingPayCoresCreator{result: PayCoresCheckoutResult{ProviderOrderID: "pco-response", CheckoutURL: "https://checkout.example.test/pco-response"}}
+	service := NewCheckoutServiceWithPayCores(repository, creator, fixedPaymentTime)
+	requestID := "web-checkout-cas-conflict"
+
+	if _, err := service.CreatePayCoresCheckoutForChannel(context.Background(), "user-1", "coins_100", PaymentChannelSelection{ClientRequestID: requestID}); !errors.Is(err, ErrPaymentOrderMismatch) {
+		t.Fatalf("CreatePayCoresCheckout() error = %v，期望 ErrPaymentOrderMismatch", err)
+	}
+	stored, err := repository.FindOrder(context.Background(), clientPaymentOrderID("user-1", "coins_100", requestID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored == nil || stored.ProviderOrderID != "pco-other" || stored.AmountCents != 999 || stored.DiamondAmount != 100 {
+		t.Fatalf("冲突后的本地订单 = %#v，期望拒绝响应且不改冻结事实", stored)
+	}
+}
+
 type recordingPayCoresCreator struct {
 	request PayCoresCheckoutRequest
 	result  PayCoresCheckoutResult
+	calls   int
 }
 
 func (creator *recordingPayCoresCreator) CreatePayCoresOrder(_ context.Context, request PayCoresCheckoutRequest) (PayCoresCheckoutResult, error) {
+	creator.calls++
 	creator.request = request
 	return creator.result, nil
 }
 
 // checkoutMemoryRepository 是领域测试的最小内存事务替身，只模拟本用例依赖的支付事实。
 type checkoutMemoryRepository struct {
-	mu       sync.Mutex
-	products map[string][]PaymentProduct
-	orders   map[string]PaymentOrder
-	receipts map[receiptKey]Receipt
-	balances map[string]int64
-	credits  map[receiptKey]PaymentCredit
+	mu                      sync.Mutex
+	products                map[string][]PaymentProduct
+	orders                  map[string]PaymentOrder
+	receipts                map[receiptKey]Receipt
+	balances                map[string]int64
+	credits                 map[receiptKey]PaymentCredit
+	bindRaceProviderOrderID string
 }
 
 func newCheckoutMemoryRepository() *checkoutMemoryRepository {
@@ -208,6 +321,12 @@ func (repository *checkoutMemoryRepository) FindOrderByProviderOrder(_ context.C
 func (repository *checkoutMemoryRepository) BindPayCoresProviderOrder(_ context.Context, localOrderID, provisionalProviderOrderID, providerOrderID string, updatedAt time.Time) (bool, error) {
 	order, ok := repository.orders[localOrderID]
 	if !ok || order.Provider != ProviderPayCores || order.ProviderOrderID != provisionalProviderOrderID || order.Status != PaymentOrderStatusPending {
+		return false, nil
+	}
+	if repository.bindRaceProviderOrderID != "" {
+		order.ProviderOrderID = repository.bindRaceProviderOrderID
+		order.UpdatedAt = updatedAt.UTC()
+		repository.orders[localOrderID] = order
 		return false, nil
 	}
 	for _, existing := range repository.orders {

@@ -95,6 +95,44 @@ func TestMongo账本付费预留冲正恢复余额(t *testing.T) {
 	assertLedgerTestDocumentCount(t, ctx, dailyQuotas, dailyQuotaID, 0)
 }
 
+// 成功素材发布与退款共用 reservation 文档作为 CAS gate。已发布结果不能因为
+// 晚到的失败结论再被冲正，否则用户可以同时得到作品和退款。
+func TestMongo账本已发布预留拒绝冲正(t *testing.T) {
+	client := newLocalMongoClient(t)
+	database := client.Database("cling_main")
+	ctx, cancel := newMongoTestContext()
+	defer cancel()
+	if err := migrate.NewInitializer(database).Ensure(ctx); err != nil {
+		t.Fatalf("初始化本地 schema: %v", err)
+	}
+	userID := uuid.NewString()
+	creationID := uuid.NewString()
+	reservationID := "reservation:" + creationID
+	accounts := database.Collection(schema.CollectionAccounts)
+	reservations := database.Collection(schema.CollectionReservations)
+	ledgerEntries := database.Collection(schema.CollectionLedgerEntries)
+	cleanupLedgerTestDocuments(t, database, []string{userID}, nil, []string{reservationID}, []string{"reserve:" + creationID, "reverse:" + creationID})
+	if _, err := accounts.InsertOne(ctx, model.AccountDocument{ID: userID, DiamondBalance: 20}); err != nil {
+		t.Fatalf("种入测试账户: %v", err)
+	}
+	usecase := ledger.NewUsecase(NewLedgerRepository(&Data{client: client, database: database}), NewMongoTxRunner(client))
+	if _, err := usecase.Reserve(ctx, ledger.ReserveRequest{
+		CreationID: creationID, UserID: userID, PriceDiamonds: 20,
+		Quota: ledger.QuotaReservation{Kind: "vip_daily_image", LocalDate: "2026-09-19"},
+	}); err != nil {
+		t.Fatalf("Reserve() error = %v", err)
+	}
+	if _, err := reservations.UpdateOne(ctx, bson.M{"_id": reservationID}, bson.M{"$set": bson.M{"publication_state": "published"}, "$inc": bson.M{"publication_version": int64(1)}}); err != nil {
+		t.Fatalf("模拟成功发布 gate: %v", err)
+	}
+	if _, err := usecase.Reverse(ctx, creationID, ledger.ReversalReasonGenerationFailed); !errors.Is(err, ledger.ErrReservationStateConflict) {
+		t.Fatalf("Reverse() error = %v, want ErrReservationStateConflict", err)
+	}
+	assertLedgerTestAccountBalance(t, ctx, accounts, userID, 0)
+	assertLedgerTestReservationStatus(t, ctx, reservations, reservationID, "reserved")
+	assertLedgerTestDocumentCount(t, ctx, ledgerEntries, "reverse:"+creationID, 0)
+}
+
 func TestMongo账本事务内冲正使用冻结业务时间(t *testing.T) {
 	client := newLocalMongoClient(t)
 	database := client.Database("cling_main")

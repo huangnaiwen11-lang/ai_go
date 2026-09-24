@@ -10,6 +10,7 @@ type UserDocument struct {
 	AvatarImageID  string    `bson:"avatar_image_id,omitempty"`
 	AccountStatus  string    `bson:"account_status"`
 	BindingState   string    `bson:"binding_state"`
+	Role           string    `bson:"role,omitempty"`
 	Timezone       string    `bson:"timezone"`
 	GuestPlatform  string    `bson:"guest_platform,omitempty"`
 	GuestDeviceID  string    `bson:"guest_device_id,omitempty"`

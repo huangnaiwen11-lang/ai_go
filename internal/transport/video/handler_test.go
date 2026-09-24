@@ -108,6 +108,32 @@ func TestHandler幂等键请求指纹冲突返回409(t *testing.T) {
 	}
 }
 
+func TestWriteError保留Admission503原因码(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+		err  error
+		code string
+	}{
+		{name: "依赖不可用", err: creations.ErrAdmissionDependencyUnavailable, code: "SERVICE_UNAVAILABLE"},
+		{name: "发布配置错误", err: creations.ErrAdmissionConfigurationUnavailable, code: "GENERATION_CONFIGURATION_UNAVAILABLE"},
+		{name: "产品配方缺失", err: creations.ErrB2BProductRecipeUnavailable, code: "GENERATION_RECIPE_UNAVAILABLE"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			writeError(recorder, testCase.err)
+			var response struct {
+				Code string `json:"code"`
+			}
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if recorder.Code != http.StatusServiceUnavailable || response.Code != testCase.code {
+				t.Fatalf("status/code = %d/%q, want 503/%q", recorder.Code, response.Code, testCase.code)
+			}
+		})
+	}
+}
+
 // 读取状态必须把 video 业务视图按现网字段回写，并且不将内部配方或资产事实泄露给客户端。
 func TestHandler读取视频状态(t *testing.T) {
 	statuses := staticStatusReader{view: &bizvideo.VideoView{TaskID: "550e8400-e29b-41d4-a716-446655440203", Status: bizvideo.GenerationStatusCompleted, DurationSeconds: 10, VideoURL: "https://assets.example.test/final.mp4"}}

@@ -109,6 +109,35 @@ func TestMongoCallback拒绝被篡改的延迟配方并完整回滚(t *testing.T
 	fixture.assertCount(schema.CollectionCallbackReceipts, bson.D{{Key: "_id", Value: "generation.callback:" + nonce}}, 0)
 }
 
+// The legacy execution.v2 callback path must never activate a B2B deferred
+// recipe. B2B binds its opening frame only after the materializer verifies the
+// immutable R2 object; accepting it here would turn an unowned provider URL
+// into a second-stage request.
+func TestMongoCallback拒绝由旧回调激活B2B延迟配方(t *testing.T) {
+	fixture := newCallbackMongoFixture(t)
+	fixture.createTwoStepVideoWithRecipe()
+	nonce := "nonce-b2b-deferred-" + uuid.NewString()
+	fixture.track(schema.CollectionCallbackReceipts, "generation.callback:"+nonce)
+	fixture.track(schema.CollectionAssets, "asset:"+fixture.firstStepID+":result")
+	fixture.track(schema.CollectionOutboxEvents, outbox.SubmissionEventID(fixture.secondStepID))
+
+	result, err := fixture.database.Collection(schema.CollectionGenerationStepRecipes).UpdateOne(fixture.ctx,
+		bson.D{{Key: "_id", Value: fixture.secondStepID}},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "protocol", Value: string(creations.DeferredRecipeProtocolB2B)}}}},
+	)
+	if err != nil || result.MatchedCount != 1 {
+		t.Fatalf("mark deferred recipe as B2B: %v", err)
+	}
+
+	if err := fixture.usecase.Handle(fixture.ctx, fixture.completedFirstFrame(nonce)); !errors.Is(err, generation.ErrInvalidCallbackEvent) {
+		t.Fatalf("legacy callback activating B2B deferred recipe = %v, want ErrInvalidCallbackEvent", err)
+	}
+	fixture.assertSecondStepBlockedAndRecipePending()
+	fixture.assertCount(schema.CollectionAssets, bson.D{{Key: "_id", Value: "asset:" + fixture.firstStepID + ":result"}}, 0)
+	fixture.assertCount(schema.CollectionOutboxEvents, bson.D{{Key: "_id", Value: outbox.SubmissionEventID(fixture.secondStepID)}}, 0)
+	fixture.assertCount(schema.CollectionCallbackReceipts, bson.D{{Key: "_id", Value: "generation.callback:" + nonce}}, 0)
+}
+
 func TestMongoCallback同Nonce同事实重放保留首次回执时间(t *testing.T) {
 	fixture := newCallbackMongoFixture(t)
 	fixture.createSubmittedImageStep()

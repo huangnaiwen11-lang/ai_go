@@ -4,8 +4,29 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
+
+// 真实部署文件的任一未知 route key 会使全部精确路由 fail-closed。临时 fixture
+// 覆盖不了「代码改名而 JSON 未同步」这种会让本地所有已迁移路由 502 的事故。
+func TestRouteSwitch真实部署文件只含已确认路由(t *testing.T) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate route switch test source")
+	}
+	path := filepath.Join(filepath.Dir(file), "..", "..", "..", "deploy", "route-switch.local.json")
+	contents, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		t.Skip("deploy route switch file is absent in this checkout")
+	}
+	if err != nil {
+		t.Fatalf("read deployed route switch: %v", err)
+	}
+	if _, ok := decodeRouteSwitchDocument(contents); !ok {
+		t.Fatalf("deploy route switch contains a route unrecognized by isConfirmedExactRoute: %s", path)
+	}
+}
 
 func TestFileRouteSwitchFailsClosedAndReloads(t *testing.T) {
 	t.Parallel()

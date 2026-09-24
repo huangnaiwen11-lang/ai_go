@@ -31,6 +31,10 @@ Thumbs.db
 *.key
 *.log
 bin/
+# Local Go build outputs. They are produced by `go build` and must not enter
+# the standalone API repository.
+ai-business-service
+api-gateway
 
 # Develop tools
 .vscode/

@@ -21,7 +21,7 @@ func newOptionalFeedbackHandler(enabled bool, configPath string, authenticator *
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := conf.ValidateLocalMongo(bootstrap.GetData()); err != nil {
+	if err := conf.ValidateConfiguredMongo(bootstrap.GetData()); err != nil {
 		return nil, nil, err
 	}
 	storage, cleanup, err := data.NewData(bootstrap.GetData())

@@ -181,6 +181,116 @@ func TestMongoCreateReserved文生视频同事务冻结第二步配方(t *testin
 	}
 }
 
+// TestMongoDeferredRecipeWriter持久化未绑定B2B第二阶段配方 covers the
+// storage union directly: the B2B half of a two-step video must not be
+// mistaken for the legacy execution.v2 template before the first R2 frame
+// exists.  In particular, no model_sku/input_template may survive alongside
+// the canonical public-product bytes.
+func TestMongoDeferredRecipeWriter持久化未绑定B2B第二阶段配方(t *testing.T) {
+	fixture := newCreationMongoFixture(t)
+	stepID := uuid.NewString()
+	deferred, err := creations.CompileDeferredB2BImageToVideo(creations.PublishedB2BProductRecipe{
+		TemplateID: "template-video-1", TemplateVersion: 1, Atom: creations.AtomImageToVideo,
+		ProductKey: "video-standard", Input: json.RawMessage(`{"durationSeconds":5,"prompt":"camera move"}`),
+	}, nil)
+	if err != nil {
+		t.Fatalf("CompileDeferredB2BImageToVideo() error = %v", err)
+	}
+	writer := &mongoDeferredRecipeWriter{recipes: fixture.database.Collection(schema.CollectionGenerationStepRecipes)}
+	recipe := &creations.DeferredRecipe{
+		StepID: stepID, CreationID: "creation-" + stepID, Atom: creations.AtomImageToVideo,
+		Protocol: creations.DeferredRecipeProtocolB2B, B2B: deferred, Digest: deferred.Digest,
+		Status: creations.DeferredRecipeStatusPending, CreatedAt: fixture.now, UpdatedAt: fixture.now,
+	}
+	if err := writer.Create(fixture.ctx, recipe); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	fixture.trackDocument(schema.CollectionGenerationStepRecipes, stepID)
+
+	var stored model.DeferredRecipeDocument
+	if err := fixture.database.Collection(schema.CollectionGenerationStepRecipes).FindOne(fixture.ctx, bson.D{{Key: "_id", Value: stepID}}).Decode(&stored); err != nil {
+		t.Fatalf("read stored deferred recipe: %v", err)
+	}
+	wantPayload, err := deferred.Recipe.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	if stored.Protocol != string(creations.DeferredRecipeProtocolB2B) || stored.ModelSKU != "" || len(stored.InputTemplate) != 0 || string(stored.B2BRecipe) != string(wantPayload) || stored.Digest != deferred.Digest || stored.Status != string(creations.DeferredRecipeStatusPending) || !stored.CreatedAt.Equal(fixture.now) || !stored.UpdatedAt.Equal(fixture.now) {
+		t.Fatalf("stored deferred recipe = %#v", stored)
+	}
+	var raw bson.M
+	if err := fixture.database.Collection(schema.CollectionGenerationStepRecipes).FindOne(fixture.ctx, bson.D{{Key: "_id", Value: stepID}}).Decode(&raw); err != nil {
+		t.Fatalf("read raw deferred recipe: %v", err)
+	}
+	for _, forbidden := range []string{"model_sku", "input_template"} {
+		if _, exists := raw[forbidden]; exists {
+			t.Fatalf("B2B deferred recipe unexpectedly persists %q", forbidden)
+		}
+	}
+
+	invalid := *recipe
+	invalid.StepID = uuid.NewString()
+	invalid.ModelSKU = "legacy-model"
+	if err := writer.Create(fixture.ctx, &invalid); err == nil {
+		t.Fatal("Create() accepted a mixed B2B/execution.v2 deferred recipe")
+	}
+	fixture.assertDocumentCount(schema.CollectionGenerationStepRecipes, bson.D{{Key: "_id", Value: invalid.StepID}}, 0)
+}
+
+func TestMongoCreateReserved两步B2B同事务冻结归属与未绑定第二阶段配方(t *testing.T) {
+	fixture := newCreationMongoFixture(t)
+	userID := uuid.NewString()
+	fixture.seedBoundUser(userID)
+	fixture.seedActiveSubscription(userID, entitlement.SubscriptionBillingPeriodMonthly)
+	fixture.seedDailyQuota(uuid.NewString(), userID, "vip_daily_video", 3, 0)
+	first := creations.B2BProductRecipe{ProductKey: "image-standard", Input: json.RawMessage(`{"prompt":"first frame","aspectRatio":"1:1"}`)}
+	deferred, err := creations.CompileDeferredB2BImageToVideo(creations.PublishedB2BProductRecipe{
+		TemplateID: "template-video-1", TemplateVersion: 1, Atom: creations.AtomImageToVideo,
+		ProductKey: "video-standard", Input: json.RawMessage(`{"prompt":"camera move","durationSeconds":5}`),
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture.usecase = fixture.newUsecaseWithAdmissions(twoStepB2BCreationAdmissionResolver{})
+	request := fixture.videoRequest(userID, uuid.NewString(), 5)
+	request.InitialSubmission = nil
+	request.DeferredImageToVideo = nil
+	request.B2BSubmission = &first
+	request.DeferredB2BImageToVideo = deferred
+
+	result, err := fixture.usecase.CreateReserved(fixture.ctx, request)
+	if err != nil {
+		t.Fatalf("CreateReserved() error = %v", err)
+	}
+	fixture.trackCreationResult(result)
+	if len(result.Steps) != 2 || result.Steps[0].Route.Provider != creations.PolarStarB2BProvider || result.Steps[1].Route.Provider != creations.PolarStarB2BProvider || result.Steps[0].SubmitStatus != creations.StepSubmitStatusReady || result.Steps[1].SubmitStatus != creations.StepSubmitStatusBlocked {
+		t.Fatalf("created B2B steps = %#v", result.Steps)
+	}
+	var recipe model.DeferredRecipeDocument
+	if err := fixture.database.Collection(schema.CollectionGenerationStepRecipes).FindOne(fixture.ctx, bson.M{"_id": result.Steps[1].ID}).Decode(&recipe); err != nil {
+		t.Fatal(err)
+	}
+	wantPayload, err := deferred.Recipe.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recipe.Protocol != string(creations.DeferredRecipeProtocolB2B) || string(recipe.B2BRecipe) != string(wantPayload) || recipe.Digest != deferred.Digest || recipe.Status != string(creations.DeferredRecipeStatusPending) || recipe.ModelSKU != "" || len(recipe.InputTemplate) != 0 {
+		t.Fatalf("stored B2B deferred recipe = %#v", recipe)
+	}
+	var event model.OutboxEventDocument
+	if err := fixture.database.Collection(schema.CollectionOutboxEvents).FindOne(fixture.ctx, bson.M{"_id": outbox.SubmissionEventID(result.Steps[0].ID)}).Decode(&event); err != nil {
+		t.Fatal(err)
+	}
+	storedFirst, err := creations.ParseB2BProductRecipe(event.Payload)
+	if err != nil || storedFirst.ProductKey != first.ProductKey {
+		t.Fatalf("first B2B event payload = %#v / %v", storedFirst, err)
+	}
+	count, err := fixture.database.Collection(schema.CollectionOutboxEvents).CountDocuments(fixture.ctx, bson.M{"_id": outbox.SubmissionEventID(result.Steps[1].ID)})
+	if err != nil || count != 0 {
+		t.Fatalf("second B2B event must not exist before owned frame: %d / %v", count, err)
+	}
+}
+
 // TestMongoCreateReservedOutbox快照可被工作者首次提交验证创建侧和投递侧共用同一冻结技术合同。
 // 它禁止测试绕过 CreateReserved 直接伪造完整中台 Execution，避免两侧合同悄然漂移。
 func TestMongoCreateReservedOutbox快照可被工作者首次提交(t *testing.T) {
@@ -251,7 +361,7 @@ func TestMongoCreateReservedOutbox快照可被工作者首次提交(t *testing.T
 		NewGenerationSubmissionRepository(&Data{database: fixture.database}),
 		fixture.ledgerUsecase,
 		fixture.txRunner,
-		client,
+		worker.LocalClientRouter{Local: client},
 		nil,
 		"worker-create-contract",
 		func() time.Time { return fixture.now },
@@ -977,6 +1087,7 @@ func newCreationMongoFixture(t *testing.T) *creationMongoFixture {
 			ledgerUsecase,
 			outboxRepository,
 			txRunner,
+			nil,
 			func() time.Time { return now },
 		),
 	}
@@ -992,8 +1103,51 @@ func (fixture *creationMongoFixture) newUsecaseWithWriter(writer outbox.Writer) 
 		fixture.ledgerUsecase,
 		writer,
 		fixture.txRunner,
+		nil,
 		func() time.Time { return fixture.now },
 	)
+}
+
+func (fixture *creationMongoFixture) newUsecaseWithAdmissions(admissions creations.AdmissionResolver) *creations.Usecase {
+	fixture.t.Helper()
+	return creations.NewUsecaseWithClock(
+		fixture.userRepository,
+		fixture.subscriptionReader,
+		fixture.entitlementUsecase,
+		fixture.capturingCreationRepository,
+		fixture.ledgerUsecase,
+		fixture.outboxRepository,
+		fixture.txRunner,
+		admissions,
+		func() time.Time { return fixture.now },
+	)
+}
+
+type twoStepB2BCreationAdmissionResolver struct{}
+
+func (twoStepB2BCreationAdmissionResolver) ResolveAdmission(_ context.Context, request creations.AdmissionRequest) (creations.StepAdmission, error) {
+	if request.B2B == nil {
+		return creations.StepAdmission{}, creations.ErrB2BProductRecipeUnavailable
+	}
+	recipe, err := request.B2B.Normalize()
+	if err != nil {
+		return creations.StepAdmission{}, err
+	}
+	return creations.StepAdmission{Route: creations.ExecutionRoute{
+		Provider: creations.PolarStarB2BProvider, AccountRef: "account-main", ContractVersion: creations.B2BContractVersion, MappingVersion: "mapping-video-v1",
+	}, B2B: &recipe}, nil
+}
+
+func (resolver twoStepB2BCreationAdmissionResolver) ResolveAdmissions(ctx context.Context, requests []creations.AdmissionRequest) ([]creations.StepAdmission, error) {
+	admissions := make([]creations.StepAdmission, 0, len(requests))
+	for _, request := range requests {
+		admission, err := resolver.ResolveAdmission(ctx, request)
+		if err != nil {
+			return nil, err
+		}
+		admissions = append(admissions, admission)
+	}
+	return admissions, nil
 }
 
 func (fixture *creationMongoFixture) imageRequest(userID, idempotencyKey string) creations.CreateReservedRequest {

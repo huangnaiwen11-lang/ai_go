@@ -19,7 +19,7 @@ func newConfiguredWalletViewHandler(dataConfig *conf.Data, authenticator *sessio
 	if authenticator == nil {
 		return nil, nil, fmt.Errorf("Go session authenticator is required for wallet view")
 	}
-	if err := conf.ValidateLocalMongo(dataConfig); err != nil {
+	if err := conf.ValidateConfiguredMongo(dataConfig); err != nil {
 		return nil, nil, err
 	}
 	storage, cleanup, err := data.NewData(dataConfig)
