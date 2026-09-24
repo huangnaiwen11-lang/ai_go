@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	MongoProfileLocal   = "local"
-	MongoProfileStaging = "staging"
+	MongoProfileLocal      = "local"
+	MongoProfileStaging    = "staging"
+	MongoProfileProduction = "production"
 
 	localMongoDatabase   = "cling_main"
 	localMongoReplica    = "rs0"
@@ -21,7 +22,7 @@ const (
 	minimumHMACKey       = 32
 )
 
-// Validate 验证配置的协议隔离与事务前提；生产 Mongo 接入尚未实现。
+// Validate 验证配置的协议隔离与事务前提。
 // 该校验只检查配置边界，不会尝试连接 MongoDB、生成中台或支付渠道。
 func Validate(cfg *Bootstrap) error {
 	if cfg == nil {
@@ -46,7 +47,8 @@ func Validate(cfg *Bootstrap) error {
 }
 
 // ValidateConfiguredMongo 根据显式 CLING_MONGO_PROFILE 选择校验规则。
-// 未显式选择时保持 local，只有 staging profile 才允许 SSH 转发的测试库。
+// 未显式选择时保持 local；staging 只允许 SSH 转发的测试库，production
+// 则必须使用专属远端数据库。
 func ValidateConfiguredMongo(data *Data) error {
 	profile := strings.TrimSpace(os.Getenv("CLING_MONGO_PROFILE"))
 	if profile == "" {
@@ -55,7 +57,7 @@ func ValidateConfiguredMongo(data *Data) error {
 	return ValidateMongoProfile(data, profile)
 }
 
-// ApplyMongoEnvironmentOverrides 将显式 staging profile 的 URI 注入进程配置。
+// ApplyMongoEnvironmentOverrides 将显式 staging 或 production profile 的 URI 注入进程配置。
 // local profile 不读取这些变量，避免本地默认配置被测试凭据污染。
 func ApplyMongoEnvironmentOverrides(bootstrap *Bootstrap, getenv func(string) string) error {
 	if bootstrap == nil || getenv == nil {
@@ -65,13 +67,13 @@ func ApplyMongoEnvironmentOverrides(bootstrap *Bootstrap, getenv func(string) st
 	if profile == "" || profile == MongoProfileLocal {
 		return nil
 	}
-	if profile != MongoProfileStaging {
+	if profile != MongoProfileStaging && profile != MongoProfileProduction {
 		return fmt.Errorf("unknown MongoDB profile %q", profile)
 	}
 
 	uri := strings.TrimSpace(getenv("CLING_MONGO_URI"))
 	if uri == "" {
-		return errors.New("CLING_MONGO_URI is required for staging MongoDB profile")
+		return fmt.Errorf("CLING_MONGO_URI is required for %s MongoDB profile", profile)
 	}
 	if bootstrap.Data == nil {
 		bootstrap.Data = &Data{}
@@ -82,8 +84,11 @@ func ApplyMongoEnvironmentOverrides(bootstrap *Bootstrap, getenv func(string) st
 	mongo := bootstrap.Data.Mongo
 	mongo.Uri = uri
 	mongo.Database = strings.TrimSpace(getenv("CLING_MONGO_DATABASE"))
-	if mongo.Database == "" {
+	if mongo.Database == "" && profile == MongoProfileStaging {
 		mongo.Database = stagingMongoDatabase
+	}
+	if mongo.Database == "" {
+		return fmt.Errorf("CLING_MONGO_DATABASE is required for %s MongoDB profile", profile)
 	}
 	mongo.ReplicaSet = ""
 	mongo.TransactionsRequired = true
@@ -92,16 +97,97 @@ func ApplyMongoEnvironmentOverrides(bootstrap *Bootstrap, getenv func(string) st
 }
 
 // ValidateMongoProfile 按命名 profile 校验 Mongo 配置。未知 profile 必须失败，
-// 防止拼写错误意外绕过 local/staging 的安全边界。
+// 防止拼写错误意外绕过 local/staging/production 的安全边界。
 func ValidateMongoProfile(data *Data, profile string) error {
 	switch strings.TrimSpace(profile) {
 	case MongoProfileLocal:
 		return ValidateLocalMongo(data)
 	case MongoProfileStaging:
 		return ValidateStagingMongo(data)
+	case MongoProfileProduction:
+		return ValidateProductionMongo(data)
 	default:
 		return fmt.Errorf("unknown MongoDB profile %q", profile)
 	}
+}
+
+// ValidateProductionMongo accepts only a dedicated remote MongoDB database.
+// It remains syntax-only and does not resolve DNS or connect to the database.
+// The URI must carry credentials and name the same non-local/non-staging
+// database as the explicit configuration.
+func ValidateProductionMongo(data *Data) error {
+	if data == nil {
+		return errors.New("missing MongoDB data config")
+	}
+	mongo := data.GetMongo()
+	if mongo == nil {
+		return errors.New("missing mongo config")
+	}
+	database := strings.TrimSpace(mongo.GetDatabase())
+	if database == "" || database == localMongoDatabase || database == stagingMongoDatabase || isReservedProductionMongoDatabase(database) {
+		return errors.New("production mongo database must be dedicated and must not use local or staging defaults")
+	}
+	if !mongo.GetTransactionsRequired() {
+		return errors.New("production mongo transactions are required")
+	}
+	if mongo.GetDockerLocalProfile() {
+		return errors.New("production mongo cannot use docker local profile")
+	}
+	return validateProductionMongoURI(mongo.GetUri(), database)
+}
+
+func isReservedProductionMongoDatabase(database string) bool {
+	switch strings.ToLower(strings.TrimSpace(database)) {
+	case "local", "staging", "development", "dev", "default":
+		return true
+	default:
+		return false
+	}
+}
+
+func validateProductionMongoURI(rawURI, database string) error {
+	uri, err := url.Parse(strings.TrimSpace(rawURI))
+	if err != nil || (uri.Scheme != "mongodb" && uri.Scheme != "mongodb+srv") || strings.TrimSpace(uri.Host) == "" {
+		return errors.New("production mongo uri must be a mongodb connection string")
+	}
+	if uri.User == nil || strings.TrimSpace(uri.User.Username()) == "" {
+		return errors.New("production mongo uri must include credentials")
+	}
+	if strings.TrimPrefix(uri.Path, "/") != database {
+		return errors.New("production mongo uri database must match CLING_MONGO_DATABASE")
+	}
+	hosts := strings.Split(uri.Host, ",")
+	if uri.Scheme == "mongodb+srv" && len(hosts) != 1 {
+		return errors.New("production mongodb+srv uri must contain exactly one host")
+	}
+	for _, rawHost := range hosts {
+		host, port, err := net.SplitHostPort(rawHost)
+		if uri.Scheme == "mongodb" {
+			if err != nil || host == "" || port == "" {
+				return errors.New("production mongo host must include a host and port")
+			}
+		} else {
+			if err == nil || rawHost == "" {
+				return errors.New("production mongodb+srv host must not include a port")
+			}
+			host = rawHost
+		}
+		if !isAllowedProductionMongoHost(host) {
+			return errors.New("production mongo host must not be local, staging, or private")
+		}
+	}
+	return nil
+}
+
+func isAllowedProductionMongoHost(host string) bool {
+	normalized := strings.TrimRight(strings.ToLower(strings.TrimSpace(host)), ".")
+	if normalized == "" || normalized == "mongo" || normalized == "localhost" || strings.HasSuffix(normalized, ".localhost") || strings.HasSuffix(normalized, ".local") || strings.HasSuffix(normalized, ".internal") {
+		return false
+	}
+	if ip := net.ParseIP(normalized); ip != nil {
+		return ip.IsGlobalUnicast() && !ip.IsPrivate() && !ip.IsLoopback() && !ip.IsLinkLocalUnicast()
+	}
+	return strings.Contains(normalized, ".")
 }
 
 // ValidateLocalMongo 验证 MongoDB 仅指向本地独立的 cling_main 副本集。

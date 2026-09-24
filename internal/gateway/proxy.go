@@ -13,6 +13,10 @@ import (
 type Config struct {
 	DefaultUpstream *url.URL
 	RouteSwitch     RouteSwitch
+	// ClientAppResolver and ClientAppID optionally bind Go-owned client routes
+	// to one active App instance. Nil resolver preserves transparent behavior.
+	ClientAppResolver ClientAppResolver
+	ClientAppID       string
 	// GenerationCallback 仅处理两条精确的内部生成回调路径；未配置时仍由 Node 代理。
 	GenerationCallback http.Handler
 	// ProviderCallback 仅处理一条精确的 PolarStar B2B 终态回调路径；未配置时仍由 Node 代理。
@@ -74,6 +78,8 @@ type Gateway struct {
 	notificationHandler     http.Handler
 	adminHandler            http.Handler
 	generationStreamHandler http.Handler
+	clientAppResolver       ClientAppResolver
+	clientAppID             string
 }
 
 type exactLocalRoute struct {
@@ -215,6 +221,9 @@ func New(cfg Config) *Gateway {
 	if routeSwitch == nil {
 		routeSwitch = disabledRouteSwitch{}
 	}
+	if cfg.ClientAppResolver != nil && strings.TrimSpace(cfg.ClientAppID) == "" {
+		panic("gateway: client app resolver requires ClientAppID")
+	}
 	return &Gateway{
 		defaultProxy:            newProxy(cfg.DefaultUpstream),
 		defaultUpstream:         cloneURL(cfg.DefaultUpstream),
@@ -236,6 +245,8 @@ func New(cfg Config) *Gateway {
 		notificationHandler:     cfg.NotificationHandler,
 		adminHandler:            cfg.AdminHandler,
 		generationStreamHandler: cfg.GenerationStreamHandler,
+		clientAppResolver:       cfg.ClientAppResolver,
+		clientAppID:             strings.TrimSpace(cfg.ClientAppID),
 	}
 }
 
@@ -258,7 +269,9 @@ func (g *Gateway) Handler() http.Handler {
 			return
 		}
 		if g.generationStreamHandler != nil && r.Method == http.MethodGet && r.URL.Path == generationStreamRoute.path && g.routeSwitch.Enabled(generationStreamRoute) {
-			g.generationStreamHandler.ServeHTTP(w, r)
+			if g.allowClientApp(w, r) {
+				g.generationStreamHandler.ServeHTTP(w, r)
+			}
 			return
 		}
 		if g.paymentCallback != nil && matchesPaymentCallback(r) && g.routeSwitch.Enabled(paymentCallbackRouteKey(r.URL.Path)) {
@@ -267,28 +280,38 @@ func (g *Gateway) Handler() http.Handler {
 		}
 		if g.paymentEntryHandler != nil && matchesPaymentEntry(r) && g.routeSwitch.Enabled(paymentEntryRouteKey(r.URL.Path)) {
 			// 支付入口一旦接管不得再回退 Node，否则一次客户端购买可能冻结两张订单或重复入账。
-			g.paymentEntryHandler.ServeHTTP(w, r)
+			if g.allowClientApp(w, r) {
+				g.paymentEntryHandler.ServeHTTP(w, r)
+			}
 			return
 		}
 		// 本机 I2I 目录与图片 Handler 同期开关。目录不包含技术配方，且只有完整 fixture 的
 		// Vite 精确代理会将请求定向到这里；其余环境保持 Node 目录语义。
 		if g.t2iHandler != nil && matchesLocalImageTemplateCatalog(r) {
-			g.t2iHandler.ServeHTTP(w, r)
+			if g.allowClientApp(w, r) {
+				g.t2iHandler.ServeHTTP(w, r)
+			}
 			return
 		}
 		if g.videoHandler != nil && matchesLocalVideoTemplateCatalog(r) {
-			g.videoHandler.ServeHTTP(w, r)
+			if g.allowClientApp(w, r) {
+				g.videoHandler.ServeHTTP(w, r)
+			}
 			return
 		}
 		if g.videoHandler != nil && matchesLocalHomepageContent(r) {
-			g.videoHandler.ServeHTTP(w, r)
+			if g.allowClientApp(w, r) {
+				g.videoHandler.ServeHTTP(w, r)
+			}
 			return
 		}
 		if route, ok := matchWorksRoute(r); ok {
 			if g.worksHandler != nil && g.routeSwitch.Enabled(route) {
 				// 作品读取一旦由 Go 接管，必须使用同一 Go 会话和自有创作事实；
 				// 开关关闭时继续由 Node 透明处理，避免混用两个作品域。
-				g.worksHandler.ServeHTTP(w, r)
+				if g.allowClientApp(w, r) {
+					g.worksHandler.ServeHTTP(w, r)
+				}
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -299,7 +322,9 @@ func (g *Gateway) Handler() http.Handler {
 				// Cancellation creates a durable request only. Once Go accepts it,
 				// falling back to Node could enqueue a second provider cancel through
 				// a different account or identity domain.
-				g.creationCancelHandler.ServeHTTP(w, r)
+				if g.allowClientApp(w, r) {
+					g.creationCancelHandler.ServeHTTP(w, r)
+				}
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -309,7 +334,9 @@ func (g *Gateway) Handler() http.Handler {
 			if g.walletViewHandler != nil && g.routeSwitch.Enabled(route) {
 				// 钱包读取一旦由 Go 接管，必须使用 Go 自有会话和账本事实，不能回退 Node
 				// 混用两个账户域；开关未开启时则完整保持 Node 的既有读取语义。
-				g.walletViewHandler.ServeHTTP(w, r)
+				if g.allowClientApp(w, r) {
+					g.walletViewHandler.ServeHTTP(w, r)
+				}
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -319,7 +346,9 @@ func (g *Gateway) Handler() http.Handler {
 			if g.authEntryHandler != nil && g.routeSwitch.Enabled(route) {
 				// 账号入口一旦被明确接管，响应必须来自同一 Go 用户域，绝不能在失败时
 				// 重放 Node，否则会出现两个账户、两个会话或重复注册奖励的风险。
-				g.authEntryHandler.ServeHTTP(w, r)
+				if g.allowClientApp(w, r) {
+					g.authEntryHandler.ServeHTTP(w, r)
+				}
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -331,7 +360,9 @@ func (g *Gateway) Handler() http.Handler {
 		}
 		if route, ok := matchFeedbackRoute(r); ok {
 			if g.feedbackHandler != nil && g.routeSwitch.Enabled(route) {
-				g.feedbackHandler.ServeHTTP(w, r)
+				if g.allowClientApp(w, r) {
+					g.feedbackHandler.ServeHTTP(w, r)
+				}
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -339,7 +370,9 @@ func (g *Gateway) Handler() http.Handler {
 		}
 		if route, ok := matchNotificationRoute(r); ok {
 			if g.notificationHandler != nil && g.routeSwitch.Enabled(route) {
-				g.notificationHandler.ServeHTTP(w, r)
+				if g.allowClientApp(w, r) {
+					g.notificationHandler.ServeHTTP(w, r)
+				}
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -348,7 +381,9 @@ func (g *Gateway) Handler() http.Handler {
 		if route := matchLocalMediaRoute(r); route != mediaRouteNone {
 			if g.mediaHandler != nil && g.routeSwitch.Enabled(route.routeKey()) {
 				// 上传和读取一旦接管均不得转交 Node，素材 ID、归属校验和存储均属于 Go 自有域。
-				g.mediaHandler.ServeHTTP(w, r)
+				if g.allowClientApp(w, r) {
+					g.mediaHandler.ServeHTTP(w, r)
+				}
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -356,7 +391,9 @@ func (g *Gateway) Handler() http.Handler {
 		}
 		if route, ok := matchR2MediaRoute(r); ok {
 			if g.r2MediaHandler != nil && g.routeSwitch.Enabled(route) {
-				g.r2MediaHandler.ServeHTTP(w, r)
+				if g.allowClientApp(w, r) {
+					g.r2MediaHandler.ServeHTTP(w, r)
+				}
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -365,7 +402,9 @@ func (g *Gateway) Handler() http.Handler {
 		if route := matchT2ILocalRoute(r); route != t2iRouteNone {
 			if g.t2iHandler != nil && g.routeSwitch.Enabled(route.routeKey()) && isT2ILocalCandidate(route, r) {
 				// 本地处理器一旦取得控制权，不能再重放给 Node，避免创建请求双预扣。
-				g.t2iHandler.ServeHTTP(w, r)
+				if g.allowClientApp(w, r) {
+					g.t2iHandler.ServeHTTP(w, r)
+				}
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -374,7 +413,9 @@ func (g *Gateway) Handler() http.Handler {
 		if route := matchVideoLocalRoute(r); route != videoRouteNone {
 			if g.videoHandler != nil && g.routeSwitch.Enabled(route.routeKey()) && isVideoLocalCandidate(route, r) {
 				// 接管后绝不回退 Node，防止创建预扣在两个服务各执行一次。
-				g.videoHandler.ServeHTTP(w, r)
+				if g.allowClientApp(w, r) {
+					g.videoHandler.ServeHTTP(w, r)
+				}
 				return
 			}
 			g.defaultProxy.ServeHTTP(w, r)
@@ -388,7 +429,9 @@ func (g *Gateway) Handler() http.Handler {
 			if !g.routeSwitch.Enabled(routeKey) {
 				break
 			}
-			g.serveAfterNodeAdmission(w, r, route, requestID)
+			if g.allowClientApp(w, r) {
+				g.serveAfterNodeAdmission(w, r, route, requestID)
+			}
 			return
 		}
 

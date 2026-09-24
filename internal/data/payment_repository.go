@@ -159,18 +159,21 @@ func (repository *mongoPaymentRepository) CreateOrder(ctx context.Context, order
 		return fmt.Errorf("payment product %q version %d price does not match order snapshot: %w", order.ProductID, order.ProductVersion, payments.ErrInvalidPaymentOrder)
 	}
 	document := model.PaymentOrderDocument{
-		ID:              order.ID,
-		UserID:          order.UserID,
-		Provider:        string(order.Provider),
-		ProviderOrderID: order.ProviderOrderID,
-		ProductID:       order.ProductID,
-		ProductVersion:  order.ProductVersion,
-		DiamondAmount:   order.DiamondAmount,
-		AmountCents:     order.AmountCents,
-		Currency:        order.Currency,
-		Status:          string(order.Status),
-		CreatedAt:       order.CreatedAt.UTC(),
-		UpdatedAt:       order.UpdatedAt.UTC(),
+		ID:                    order.ID,
+		UserID:                order.UserID,
+		Provider:              string(order.Provider),
+		ProviderOrderID:       order.ProviderOrderID,
+		ChannelProvider:       order.ChannelProvider,
+		ChannelAccount:        order.ChannelAccount,
+		ChannelDevicePlatform: order.ChannelDevicePlatform,
+		ProductID:             order.ProductID,
+		ProductVersion:        order.ProductVersion,
+		DiamondAmount:         order.DiamondAmount,
+		AmountCents:           order.AmountCents,
+		Currency:              order.Currency,
+		Status:                string(order.Status),
+		CreatedAt:             order.CreatedAt.UTC(),
+		UpdatedAt:             order.UpdatedAt.UTC(),
 	}
 	if _, err := repository.orders.InsertOne(ctx, document); err != nil {
 		if mongo.IsDuplicateKeyError(err) {
@@ -195,18 +198,21 @@ func (repository *mongoPaymentRepository) FindOrder(ctx context.Context, orderID
 		return nil, fmt.Errorf("find payment order %q: %w", orderID, err)
 	}
 	return &payments.PaymentOrder{
-		ID:              document.ID,
-		UserID:          document.UserID,
-		Provider:        payments.Provider(document.Provider),
-		ProviderOrderID: document.ProviderOrderID,
-		ProductID:       document.ProductID,
-		ProductVersion:  document.ProductVersion,
-		DiamondAmount:   document.DiamondAmount,
-		AmountCents:     document.AmountCents,
-		Currency:        document.Currency,
-		Status:          payments.PaymentOrderStatus(document.Status),
-		CreatedAt:       document.CreatedAt,
-		UpdatedAt:       document.UpdatedAt,
+		ID:                    document.ID,
+		UserID:                document.UserID,
+		Provider:              payments.Provider(document.Provider),
+		ProviderOrderID:       document.ProviderOrderID,
+		ChannelProvider:       document.ChannelProvider,
+		ChannelAccount:        document.ChannelAccount,
+		ChannelDevicePlatform: document.ChannelDevicePlatform,
+		ProductID:             document.ProductID,
+		ProductVersion:        document.ProductVersion,
+		DiamondAmount:         document.DiamondAmount,
+		AmountCents:           document.AmountCents,
+		Currency:              document.Currency,
+		Status:                payments.PaymentOrderStatus(document.Status),
+		CreatedAt:             document.CreatedAt,
+		UpdatedAt:             document.UpdatedAt,
 	}, nil
 }
 
@@ -224,18 +230,21 @@ func (repository *mongoPaymentRepository) FindOrderByProviderOrder(ctx context.C
 		return nil, fmt.Errorf("find payment order for provider %q order %q: %w", provider, providerOrderID, err)
 	}
 	return &payments.PaymentOrder{
-		ID:              document.ID,
-		UserID:          document.UserID,
-		Provider:        payments.Provider(document.Provider),
-		ProviderOrderID: document.ProviderOrderID,
-		ProductID:       document.ProductID,
-		ProductVersion:  document.ProductVersion,
-		DiamondAmount:   document.DiamondAmount,
-		AmountCents:     document.AmountCents,
-		Currency:        document.Currency,
-		Status:          payments.PaymentOrderStatus(document.Status),
-		CreatedAt:       document.CreatedAt,
-		UpdatedAt:       document.UpdatedAt,
+		ID:                    document.ID,
+		UserID:                document.UserID,
+		Provider:              payments.Provider(document.Provider),
+		ProviderOrderID:       document.ProviderOrderID,
+		ChannelProvider:       document.ChannelProvider,
+		ChannelAccount:        document.ChannelAccount,
+		ChannelDevicePlatform: document.ChannelDevicePlatform,
+		ProductID:             document.ProductID,
+		ProductVersion:        document.ProductVersion,
+		DiamondAmount:         document.DiamondAmount,
+		AmountCents:           document.AmountCents,
+		Currency:              document.Currency,
+		Status:                payments.PaymentOrderStatus(document.Status),
+		CreatedAt:             document.CreatedAt,
+		UpdatedAt:             document.UpdatedAt,
 	}, nil
 }
 

@@ -15,18 +15,21 @@ type PaymentProductDocument struct {
 
 // PaymentOrderDocument 表示支付订单持久化对象。
 type PaymentOrderDocument struct {
-	ID              string    `bson:"_id"`
-	UserID          string    `bson:"user_id"`
-	Provider        string    `bson:"provider"`
-	ProductID       string    `bson:"product_id"`
-	ProductVersion  int64     `bson:"product_version"`
-	DiamondAmount   int64     `bson:"diamond_amount"`
-	AmountCents     int64     `bson:"amount_cents,omitempty"`
-	Currency        string    `bson:"currency,omitempty"`
-	Status          string    `bson:"status"`
-	ProviderOrderID string    `bson:"provider_order_id,omitempty"`
-	CreatedAt       time.Time `bson:"created_at"`
-	UpdatedAt       time.Time `bson:"updated_at"`
+	ID                    string    `bson:"_id"`
+	UserID                string    `bson:"user_id"`
+	Provider              string    `bson:"provider"`
+	ProductID             string    `bson:"product_id"`
+	ProductVersion        int64     `bson:"product_version"`
+	DiamondAmount         int64     `bson:"diamond_amount"`
+	AmountCents           int64     `bson:"amount_cents,omitempty"`
+	Currency              string    `bson:"currency,omitempty"`
+	Status                string    `bson:"status"`
+	ProviderOrderID       string    `bson:"provider_order_id,omitempty"`
+	ChannelProvider       string    `bson:"channel_provider,omitempty"`
+	ChannelAccount        string    `bson:"channel_account,omitempty"`
+	ChannelDevicePlatform string    `bson:"channel_device_platform,omitempty"`
+	CreatedAt             time.Time `bson:"created_at"`
+	UpdatedAt             time.Time `bson:"updated_at"`
 }
 
 // PaymentReceiptDocument 表示支付回执持久化对象。

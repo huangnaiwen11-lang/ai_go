@@ -52,6 +52,9 @@ func (initializer *Initializer) Ensure(ctx context.Context) error {
 		if len(spec.PartialFilter) > 0 {
 			indexOptions.SetPartialFilterExpression(spec.PartialFilter)
 		}
+		if spec.Collation != nil {
+			indexOptions.SetCollation(spec.Collation)
+		}
 		indexesByCollection[spec.Collection] = append(indexesByCollection[spec.Collection], mongo.IndexModel{
 			Keys:    spec.Keys,
 			Options: indexOptions,

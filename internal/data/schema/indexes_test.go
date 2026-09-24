@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func TestAllCollectionsReturnsIndependentOrderedList(t *testing.T) {
@@ -72,6 +73,74 @@ func TestAllIndexesReturnsExactIndependentSpecs(t *testing.T) {
 		*got[len(got)-1].ExpireAfterSeconds = 1
 	}
 	assertIndexSpecsEqual(t, want, AllIndexes())
+}
+
+func TestRuntimeAppIdentifierIndexesUseCaseInsensitiveCollation(t *testing.T) {
+	want := map[string]bson.D{
+		"ix_apps_runtime_client_id":              {{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "clientId", Value: 1}},
+		"ix_apps_runtime_package_name":           {{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "packageName", Value: 1}},
+		"ix_apps_runtime_android_application_id": {{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "nativeBuild.android.applicationId", Value: 1}},
+		"ix_apps_runtime_bundle_id":              {{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "bundleId", Value: 1}},
+		"ix_apps_runtime_ios_bundle_id":          {{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "nativeBuild.ios.bundleId", Value: 1}},
+		"ix_apps_runtime_domain":                 {{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "domain", Value: 1}},
+	}
+	wantCollation := &options.Collation{Locale: "en", Strength: 2}
+
+	indexes := AllIndexes()
+	for index := range indexes {
+		spec := &indexes[index]
+		keys, ok := want[spec.Name]
+		if !ok {
+			continue
+		}
+		if spec.Collection != CollectionApps {
+			t.Errorf("runtime index %q collection = %q, want %q", spec.Name, spec.Collection, CollectionApps)
+		}
+		if !reflect.DeepEqual(spec.Keys, keys) {
+			t.Errorf("runtime index %q keys = %#v, want %#v", spec.Name, spec.Keys, keys)
+		}
+		if !reflect.DeepEqual(spec.Collation, wantCollation) {
+			t.Errorf("runtime index %q collation = %#v, want %#v", spec.Name, spec.Collation, wantCollation)
+		}
+		delete(want, spec.Name)
+	}
+	if len(want) != 0 {
+		t.Fatalf("missing runtime App identifier indexes: %#v", want)
+	}
+
+	for index := range indexes {
+		if indexes[index].Name == "ix_apps_runtime_client_id" {
+			indexes[index].Collation.Locale = "changed"
+			break
+		}
+	}
+	for _, spec := range AllIndexes() {
+		if spec.Name == "ix_apps_runtime_client_id" && !reflect.DeepEqual(spec.Collation, wantCollation) {
+			t.Fatalf("AllIndexes() did not return an independent collation: %#v", spec.Collation)
+		}
+	}
+}
+
+func TestRuntimeAppIndexesReturnsOnlyIndependentResolverIndexes(t *testing.T) {
+	indexes := RuntimeAppIndexes()
+	if len(indexes) != 6 {
+		t.Fatalf("len(RuntimeAppIndexes()) = %d, want 6", len(indexes))
+	}
+	for _, index := range indexes {
+		if index.Collection != CollectionApps {
+			t.Errorf("RuntimeAppIndexes() collection = %q, want %q", index.Collection, CollectionApps)
+		}
+		if index.Collation == nil || !reflect.DeepEqual(index.Collation, RuntimeAppIdentifierCollation()) {
+			t.Errorf("RuntimeAppIndexes() collation = %#v, want %#v", index.Collation, RuntimeAppIdentifierCollation())
+		}
+	}
+
+	indexes[0].Name = "changed"
+	indexes[0].Keys[0].Key = "changed"
+	indexes[0].Collation.Locale = "changed"
+	if got := RuntimeAppIndexes()[0]; got.Name == "changed" || got.Keys[0].Key == "changed" || got.Collation.Locale == "changed" {
+		t.Fatalf("RuntimeAppIndexes() did not return an independent copy: %#v", got)
+	}
 }
 
 func expectedIndexes() []IndexSpec {
@@ -304,6 +373,42 @@ func expectedIndexes() []IndexSpec {
 			PartialFilter: bson.D{{Key: "nativeIdentifiers.0", Value: bson.D{{Key: "$exists", Value: true}}}},
 		},
 		{
+			Collection: "apps",
+			Name:       "ix_apps_runtime_client_id",
+			Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "clientId", Value: 1}},
+			Collation:  RuntimeAppIdentifierCollation(),
+		},
+		{
+			Collection: "apps",
+			Name:       "ix_apps_runtime_package_name",
+			Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "packageName", Value: 1}},
+			Collation:  RuntimeAppIdentifierCollation(),
+		},
+		{
+			Collection: "apps",
+			Name:       "ix_apps_runtime_android_application_id",
+			Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "nativeBuild.android.applicationId", Value: 1}},
+			Collation:  RuntimeAppIdentifierCollation(),
+		},
+		{
+			Collection: "apps",
+			Name:       "ix_apps_runtime_bundle_id",
+			Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "bundleId", Value: 1}},
+			Collation:  RuntimeAppIdentifierCollation(),
+		},
+		{
+			Collection: "apps",
+			Name:       "ix_apps_runtime_ios_bundle_id",
+			Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "nativeBuild.ios.bundleId", Value: 1}},
+			Collation:  RuntimeAppIdentifierCollation(),
+		},
+		{
+			Collection: "apps",
+			Name:       "ix_apps_runtime_domain",
+			Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "domain", Value: 1}},
+			Collation:  RuntimeAppIdentifierCollation(),
+		},
+		{
 			Collection: "platform_configs",
 			Name:       "ux_platform_configs_platform_client",
 			Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "clientId", Value: 1}},
@@ -362,6 +467,9 @@ func assertIndexSpecsEqual(t *testing.T, want, got []IndexSpec) {
 		}
 		if !reflect.DeepEqual(got[i].PartialFilter, want[i].PartialFilter) {
 			t.Errorf("index %d partialFilter = %#v, want %#v", i, got[i].PartialFilter, want[i].PartialFilter)
+		}
+		if !reflect.DeepEqual(got[i].Collation, want[i].Collation) {
+			t.Errorf("index %d collation = %#v, want %#v", i, got[i].Collation, want[i].Collation)
 		}
 	}
 }

@@ -57,10 +57,13 @@ func TestMongo支付商品版本与冻结订单快照(t *testing.T) {
 
 	createdAt := time.Date(2026, time.September, 9, 12, 0, 0, 0, time.UTC)
 	order, err := payments.FreezeOrder(payments.CreateOrderInput{
-		OrderID:         orderID,
-		UserID:          "user-" + uuid.NewString(),
-		Provider:        payments.ProviderPayCores,
-		ProviderOrderID: providerOrderID,
+		OrderID:               orderID,
+		UserID:                "user-" + uuid.NewString(),
+		Provider:              payments.ProviderPayCores,
+		ProviderOrderID:       providerOrderID,
+		ChannelProvider:       "shinningpay",
+		ChannelAccount:        "us_googlepay",
+		ChannelDevicePlatform: "web",
 	}, productV1, createdAt)
 	if err != nil {
 		t.Fatalf("FreezeOrder() error = %v", err)
@@ -81,16 +84,16 @@ func TestMongo支付商品版本与冻结订单快照(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindOrder() error = %v", err)
 	}
-	if storedOrder == nil || storedOrder.ProductID != productID || storedOrder.ProductVersion != 1 || storedOrder.DiamondAmount != 100 {
-		t.Fatalf("冻结订单 = %#v，期望保留 v1 的商品标识、版本和钻石数", storedOrder)
+	if storedOrder == nil || storedOrder.ProductID != productID || storedOrder.ProductVersion != 1 || storedOrder.DiamondAmount != 100 || storedOrder.ChannelProvider != "shinningpay" || storedOrder.ChannelAccount != "us_googlepay" || storedOrder.ChannelDevicePlatform != "web" {
+		t.Fatalf("冻结订单 = %#v，期望保留 v1 商品和 PayCores 渠道快照", storedOrder)
 	}
 
 	var document model.PaymentOrderDocument
 	if err := orders.FindOne(ctx, bson.D{{Key: "_id", Value: orderID}}).Decode(&document); err != nil {
 		t.Fatalf("读取订单文档: %v", err)
 	}
-	if document.ProductID != productID || document.ProductVersion != 1 || document.DiamondAmount != 100 {
-		t.Fatalf("订单文档 = %#v，期望完整保存商品冻结快照", document)
+	if document.ProductID != productID || document.ProductVersion != 1 || document.DiamondAmount != 100 || document.ChannelProvider != "shinningpay" || document.ChannelAccount != "us_googlepay" || document.ChannelDevicePlatform != "web" {
+		t.Fatalf("订单文档 = %#v，期望完整保存商品和渠道冻结快照", document)
 	}
 }
 

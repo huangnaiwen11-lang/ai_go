@@ -77,21 +77,27 @@ func (product PaymentProduct) Validate() error {
 // CreateOrderInput 是创建本地订单的最小可信输入。
 // ProviderOrderID 由未来的本地收银台编排生成并交给支付渠道，不使用 Node 订单号。
 type CreateOrderInput struct {
-	OrderID         string
-	UserID          string
-	Provider        Provider
-	ProviderOrderID string
+	OrderID               string
+	UserID                string
+	Provider              Provider
+	ProviderOrderID       string
+	ChannelProvider       string
+	ChannelAccount        string
+	ChannelDevicePlatform string
 }
 
 // PaymentOrder 是在创建时冻结的本地结算事实。
 type PaymentOrder struct {
-	ID              string
-	UserID          string
-	Provider        Provider
-	ProviderOrderID string
-	ProductID       string
-	ProductVersion  int64
-	DiamondAmount   int64
+	ID                    string
+	UserID                string
+	Provider              Provider
+	ProviderOrderID       string
+	ChannelProvider       string
+	ChannelAccount        string
+	ChannelDevicePlatform string
+	ProductID             string
+	ProductVersion        int64
+	DiamondAmount         int64
 	// AmountCents 和 Currency 从商品版本复制，支付回调不能覆盖这些快照。
 	AmountCents int64
 	Currency    string
@@ -131,6 +137,21 @@ func FreezeOrder(input CreateOrderInput, product PaymentProduct, createdAt time.
 	if blank(input.OrderID) || blank(input.UserID) || !input.Provider.Valid() || blank(input.ProviderOrderID) || createdAt.IsZero() {
 		return nil, ErrInvalidPaymentOrder
 	}
+	if input.Provider == ProviderPayCores {
+		channel := PaymentChannelSelection{
+			Provider:             input.ChannelProvider,
+			Account:              input.ChannelAccount,
+			ClientDevicePlatform: input.ChannelDevicePlatform,
+		}.normalized()
+		if err := channel.Validate(); err != nil {
+			return nil, ErrInvalidPaymentOrder
+		}
+		input.ChannelProvider = channel.Provider
+		input.ChannelAccount = channel.Account
+		input.ChannelDevicePlatform = channel.ClientDevicePlatform
+	} else if !blank(input.ChannelProvider) || !blank(input.ChannelAccount) || !blank(input.ChannelDevicePlatform) {
+		return nil, ErrInvalidPaymentOrder
+	}
 	if err := product.Validate(); err != nil {
 		return nil, ErrInvalidPaymentOrder
 	}
@@ -139,17 +160,20 @@ func FreezeOrder(input CreateOrderInput, product PaymentProduct, createdAt time.
 	}
 	createdAt = createdAt.UTC()
 	return &PaymentOrder{
-		ID:              input.OrderID,
-		UserID:          input.UserID,
-		Provider:        input.Provider,
-		ProviderOrderID: input.ProviderOrderID,
-		ProductID:       product.ID,
-		ProductVersion:  product.Version,
-		DiamondAmount:   product.DiamondAmount,
-		AmountCents:     product.AmountCents,
-		Currency:        product.Currency,
-		Status:          PaymentOrderStatusPending,
-		CreatedAt:       createdAt,
-		UpdatedAt:       createdAt,
+		ID:                    input.OrderID,
+		UserID:                input.UserID,
+		Provider:              input.Provider,
+		ProviderOrderID:       input.ProviderOrderID,
+		ChannelProvider:       input.ChannelProvider,
+		ChannelAccount:        input.ChannelAccount,
+		ChannelDevicePlatform: input.ChannelDevicePlatform,
+		ProductID:             product.ID,
+		ProductVersion:        product.Version,
+		DiamondAmount:         product.DiamondAmount,
+		AmountCents:           product.AmountCents,
+		Currency:              product.Currency,
+		Status:                PaymentOrderStatusPending,
+		CreatedAt:             createdAt,
+		UpdatedAt:             createdAt,
 	}, nil
 }

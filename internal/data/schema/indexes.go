@@ -1,6 +1,9 @@
 package schema
 
-import "go.mongodb.org/mongo-driver/v2/bson"
+import (
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+)
 
 // IndexSpec 描述一个 MongoDB 集合索引的声明。
 type IndexSpec struct {
@@ -11,6 +14,23 @@ type IndexSpec struct {
 	Sparse             bool
 	ExpireAfterSeconds *int32
 	PartialFilter      bson.D
+	Collation          *options.Collation
+}
+
+// RuntimeAppIdentifierCollation preserves case-insensitive App identifier
+// matching while allowing MongoDB to perform exact indexed equality lookups.
+// It must be used both by the lookup query and every matching index.
+func RuntimeAppIdentifierCollation() *options.Collation {
+	return &options.Collation{Locale: "en", Strength: 2}
+}
+
+var runtimeAppIndexNames = map[string]struct{}{
+	"ix_apps_runtime_client_id":              {},
+	"ix_apps_runtime_package_name":           {},
+	"ix_apps_runtime_android_application_id": {},
+	"ix_apps_runtime_bundle_id":              {},
+	"ix_apps_runtime_ios_bundle_id":          {},
+	"ix_apps_runtime_domain":                 {},
 }
 
 const (
@@ -264,6 +284,46 @@ var indexSpecs = []IndexSpec{
 		Unique:        true,
 		PartialFilter: bson.D{{Key: "nativeIdentifiers.0", Value: bson.D{{Key: "$exists", Value: true}}}},
 	},
+	// Runtime App scope resolves one active App through a case-insensitive,
+	// exact match on platform-specific legacy fields. Keep one index per $or
+	// branch: a compound index cannot cover different terminal fields in the
+	// same query. The collation must exactly match the resolver's Find option.
+	{
+		Collection: CollectionApps,
+		Name:       "ix_apps_runtime_client_id",
+		Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "clientId", Value: 1}},
+		Collation:  RuntimeAppIdentifierCollation(),
+	},
+	{
+		Collection: CollectionApps,
+		Name:       "ix_apps_runtime_package_name",
+		Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "packageName", Value: 1}},
+		Collation:  RuntimeAppIdentifierCollation(),
+	},
+	{
+		Collection: CollectionApps,
+		Name:       "ix_apps_runtime_android_application_id",
+		Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "nativeBuild.android.applicationId", Value: 1}},
+		Collation:  RuntimeAppIdentifierCollation(),
+	},
+	{
+		Collection: CollectionApps,
+		Name:       "ix_apps_runtime_bundle_id",
+		Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "bundleId", Value: 1}},
+		Collation:  RuntimeAppIdentifierCollation(),
+	},
+	{
+		Collection: CollectionApps,
+		Name:       "ix_apps_runtime_ios_bundle_id",
+		Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "nativeBuild.ios.bundleId", Value: 1}},
+		Collation:  RuntimeAppIdentifierCollation(),
+	},
+	{
+		Collection: CollectionApps,
+		Name:       "ix_apps_runtime_domain",
+		Keys:       bson.D{{Key: "platform", Value: 1}, {Key: "status", Value: 1}, {Key: "domain", Value: 1}},
+		Collation:  RuntimeAppIdentifierCollation(),
+	},
 	{
 		Collection: CollectionPlatformConfigs,
 		Name:       "ux_platform_configs_platform_client",
@@ -316,12 +376,32 @@ func AllIndexes() []IndexSpec {
 		indexes[i] = spec
 		indexes[i].Keys = append(bson.D(nil), spec.Keys...)
 		indexes[i].PartialFilter = append(bson.D(nil), spec.PartialFilter...)
+		if spec.Collation != nil {
+			collation := *spec.Collation
+			indexes[i].Collation = &collation
+		}
 		if spec.ExpireAfterSeconds != nil {
 			expireAfterSeconds := *spec.ExpireAfterSeconds
 			indexes[i].ExpireAfterSeconds = &expireAfterSeconds
 		}
 	}
 
+	return indexes
+}
+
+// RuntimeAppIndexes returns only the indexes required by the runtime App
+// resolver. Gateway startup must use this instead of initializing all schema.
+func RuntimeAppIndexes() []IndexSpec {
+	all := AllIndexes()
+	indexes := make([]IndexSpec, 0, len(runtimeAppIndexNames))
+	for _, spec := range all {
+		if spec.Collection != CollectionApps {
+			continue
+		}
+		if _, ok := runtimeAppIndexNames[spec.Name]; ok {
+			indexes = append(indexes, spec)
+		}
+	}
 	return indexes
 }
 

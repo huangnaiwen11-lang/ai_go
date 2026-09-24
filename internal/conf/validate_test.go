@@ -213,6 +213,58 @@ func TestValidateConfiguredMongoUsesExplicitStagingProfile(t *testing.T) {
 	}
 }
 
+func TestValidateConfiguredMongoUsesExplicitProductionProfile(t *testing.T) {
+	t.Setenv("CLING_MONGO_PROFILE", "production")
+	cfg := testConfig(
+		"mongodb://production-user:production-pass@mongo-0.example.test:27017,mongo-1.example.test:27017/cling_production?replicaSet=cling-production-rs&authSource=admin",
+		"cling_production",
+	)
+	cfg.Data.Mongo.ReplicaSet = ""
+	cfg.Data.Mongo.TransactionsRequired = true
+
+	if err := ValidateConfiguredMongo(cfg.GetData()); err != nil {
+		t.Fatalf("ValidateConfiguredMongo() error = %v", err)
+	}
+}
+
+func TestValidateConfiguredMongoRejectsLocalOrStagingProductionMongo(t *testing.T) {
+	t.Setenv("CLING_MONGO_PROFILE", "production")
+	for _, tc := range []struct {
+		name     string
+		uri      string
+		database string
+		want     string
+	}{
+		{
+			name:     "local database",
+			uri:      "mongodb://production-user:production-pass@mongo.example.test:27017/cling_main?replicaSet=cling-production-rs&authSource=admin",
+			database: "cling_main",
+			want:     "production mongo database",
+		},
+		{
+			name:     "staging database",
+			uri:      "mongodb://production-user:production-pass@mongo.example.test:27017/ai-host-v2-staging?replicaSet=cling-production-rs&authSource=admin",
+			database: "ai-host-v2-staging",
+			want:     "production mongo database",
+		},
+		{
+			name:     "loopback host",
+			uri:      "mongodb://production-user:production-pass@127.0.0.1:27017/cling_production?replicaSet=cling-production-rs&authSource=admin",
+			database: "cling_production",
+			want:     "production mongo host",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := testConfig(tc.uri, tc.database)
+			cfg.Data.Mongo.ReplicaSet = ""
+			cfg.Data.Mongo.TransactionsRequired = true
+			if err := ValidateConfiguredMongo(cfg.GetData()); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("ValidateConfiguredMongo() error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestValidateUsesConfiguredStagingProfile(t *testing.T) {
 	t.Setenv("CLING_MONGO_PROFILE", MongoProfileStaging)
 	cfg := testConfig(
@@ -227,7 +279,7 @@ func TestValidateUsesConfiguredStagingProfile(t *testing.T) {
 }
 
 func TestValidateConfiguredMongoRejectsUnknownProfile(t *testing.T) {
-	t.Setenv("CLING_MONGO_PROFILE", "production")
+	t.Setenv("CLING_MONGO_PROFILE", "unsupported")
 	cfg := testConfig("mongodb://127.0.0.1:27017/?replicaSet=rs0", "cling_main")
 
 	err := ValidateConfiguredMongo(cfg.GetData())
@@ -251,6 +303,24 @@ func TestApplyMongoEnvironmentOverridesConfiguresStaging(t *testing.T) {
 	mongo := cfg.GetData().GetMongo()
 	if mongo.GetUri() != values["CLING_MONGO_URI"] || mongo.GetDatabase() != values["CLING_MONGO_DATABASE"] || mongo.GetReplicaSet() != "" || !mongo.GetTransactionsRequired() || mongo.GetDockerLocalProfile() {
 		t.Fatalf("staging Mongo override = %+v", mongo)
+	}
+}
+
+func TestApplyMongoEnvironmentOverridesConfiguresProduction(t *testing.T) {
+	cfg := testConfig("mongodb://127.0.0.1:27017/?replicaSet=rs0", "cling_main")
+	values := map[string]string{
+		"CLING_MONGO_PROFILE":  "production",
+		"CLING_MONGO_URI":      "mongodb://production-user:production-pass@mongo.example.test:27017/cling_production?replicaSet=cling-production-rs&authSource=admin",
+		"CLING_MONGO_DATABASE": "cling_production",
+	}
+
+	if err := ApplyMongoEnvironmentOverrides(cfg, func(name string) string { return values[name] }); err != nil {
+		t.Fatalf("ApplyMongoEnvironmentOverrides() error = %v", err)
+	}
+
+	mongo := cfg.GetData().GetMongo()
+	if mongo.GetUri() != values["CLING_MONGO_URI"] || mongo.GetDatabase() != values["CLING_MONGO_DATABASE"] || mongo.GetReplicaSet() != "" || !mongo.GetTransactionsRequired() || mongo.GetDockerLocalProfile() {
+		t.Fatalf("production Mongo override = %+v", mongo)
 	}
 }
 

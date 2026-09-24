@@ -186,6 +186,30 @@ func TestCreatePayCoresCheckoutForChannel拒绝同一ClientRequestID切换渠道
 	}
 }
 
+func TestCreatePayCoresCheckoutForChannel拒绝没有渠道快照的历史订单重放(t *testing.T) {
+	repository := newCheckoutMemoryRepository()
+	product := PaymentProduct{ID: "coins_100", Version: 1, Label: "100 Diamonds", DiamondAmount: 100, AmountCents: 999, Currency: "USD", PublishStatus: ProductPublishStatusPublished}
+	repository.products[product.ID] = []PaymentProduct{product}
+	requestID := "web-checkout-legacy-channel"
+	orderID := clientPaymentOrderID("user-1", product.ID, requestID)
+	legacy, err := FreezeOrder(CreateOrderInput{OrderID: orderID, UserID: "user-1", Provider: ProviderPayCores, ProviderOrderID: "local-paycores-" + orderID}, product, fixedPaymentTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy.ChannelDevicePlatform = ""
+	repository.orders[orderID] = *legacy
+	creator := &recordingPayCoresCreator{result: PayCoresCheckoutResult{ProviderOrderID: "pco-legacy", CheckoutURL: "https://checkout.example.test/pco-legacy"}}
+	service := NewCheckoutServiceWithPayCores(repository, creator, fixedPaymentTime)
+
+	_, err = service.CreatePayCoresCheckoutForChannel(context.Background(), "user-1", product.ID, PaymentChannelSelection{Provider: "shinningpay", Account: "us_googlepay", ClientDevicePlatform: "web", ClientRequestID: requestID})
+	if creator.calls != 0 {
+		t.Errorf("PayCores 建单次数 = %d，期望历史订单在渠道快照缺失时于外部调用前被拒绝", creator.calls)
+	}
+	if !errors.Is(err, ErrPaymentOrderMismatch) {
+		t.Errorf("历史订单重放 error = %v，期望 ErrPaymentOrderMismatch", err)
+	}
+}
+
 func TestCreatePayCoresCheckout重复本地订单的绑定CAS被同值请求抢先完成时收敛成功(t *testing.T) {
 	repository := newCheckoutMemoryRepository()
 	originalProduct := PaymentProduct{ID: "coins_100", Version: 1, Label: "100 Diamonds", DiamondAmount: 100, AmountCents: 999, Currency: "USD", PublishStatus: ProductPublishStatusPublished}
@@ -297,6 +321,9 @@ func (repository *checkoutMemoryRepository) FindProduct(_ context.Context, produ
 }
 
 func (repository *checkoutMemoryRepository) CreateOrder(_ context.Context, order PaymentOrder) error {
+	if _, exists := repository.orders[order.ID]; exists {
+		return ErrPaymentOrderAlreadyExists
+	}
 	for _, existing := range repository.orders {
 		if existing.Provider == order.Provider && existing.ProviderOrderID == order.ProviderOrderID {
 			return ErrPaymentOrderAlreadyExists

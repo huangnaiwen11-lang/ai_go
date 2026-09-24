@@ -63,6 +63,7 @@ var expectedIndexSpecs = []struct {
 	unique             bool
 	sparse             bool
 	expireAfterSeconds *int32
+	collation          *options.Collation
 }{
 	{collection: "credentials", name: "ix_credentials_user_active", keys: bson.D{{Key: "user_id", Value: int32(1)}, {Key: "active", Value: int32(1)}}},
 	{collection: "identities", name: "ix_identities_user", keys: bson.D{{Key: "user_id", Value: int32(1)}}},
@@ -110,6 +111,12 @@ var expectedIndexSpecs = []struct {
 		keys:       bson.D{{Key: "nativeIdentifiers", Value: int32(1)}},
 		unique:     true,
 	},
+	{collection: "apps", name: "ix_apps_runtime_client_id", keys: bson.D{{Key: "platform", Value: int32(1)}, {Key: "status", Value: int32(1)}, {Key: "clientId", Value: int32(1)}}, collation: runtimeAppIdentifierCollation()},
+	{collection: "apps", name: "ix_apps_runtime_package_name", keys: bson.D{{Key: "platform", Value: int32(1)}, {Key: "status", Value: int32(1)}, {Key: "packageName", Value: int32(1)}}, collation: runtimeAppIdentifierCollation()},
+	{collection: "apps", name: "ix_apps_runtime_android_application_id", keys: bson.D{{Key: "platform", Value: int32(1)}, {Key: "status", Value: int32(1)}, {Key: "nativeBuild.android.applicationId", Value: int32(1)}}, collation: runtimeAppIdentifierCollation()},
+	{collection: "apps", name: "ix_apps_runtime_bundle_id", keys: bson.D{{Key: "platform", Value: int32(1)}, {Key: "status", Value: int32(1)}, {Key: "bundleId", Value: int32(1)}}, collation: runtimeAppIdentifierCollation()},
+	{collection: "apps", name: "ix_apps_runtime_ios_bundle_id", keys: bson.D{{Key: "platform", Value: int32(1)}, {Key: "status", Value: int32(1)}, {Key: "nativeBuild.ios.bundleId", Value: int32(1)}}, collation: runtimeAppIdentifierCollation()},
+	{collection: "apps", name: "ix_apps_runtime_domain", keys: bson.D{{Key: "platform", Value: int32(1)}, {Key: "status", Value: int32(1)}, {Key: "domain", Value: int32(1)}}, collation: runtimeAppIdentifierCollation()},
 	{
 		collection: "platform_configs",
 		name:       "ux_platform_configs_platform_client",
@@ -135,6 +142,10 @@ var expectedIndexSpecs = []struct {
 	},
 }
 
+func runtimeAppIdentifierCollation() *options.Collation {
+	return &options.Collation{Locale: "en", Strength: 2}
+}
+
 // 固定验收清单必须覆盖全部声明；无数据库时也执行，避免集成测试跳过后掩盖清单漂移。
 func TestFrozenSchemaCoversAllDeclarations(t *testing.T) {
 	collections := make(map[string]bool, len(expectedCollectionNames))
@@ -155,18 +166,24 @@ func TestFrozenSchemaCoversAllDeclarations(t *testing.T) {
 	}
 
 	type indexKey struct{ collection, name string }
-	indexes := make(map[indexKey]bool, len(expectedIndexSpecs))
+	indexes := make(map[indexKey]struct {
+		collation *options.Collation
+	}, len(expectedIndexSpecs))
 	for _, spec := range expectedIndexSpecs {
 		key := indexKey{spec.collection, spec.name}
-		if indexes[key] {
+		if _, exists := indexes[key]; exists {
 			t.Errorf("固定索引清单重复声明 %v", key)
 		}
-		indexes[key] = true
+		indexes[key] = struct{ collation *options.Collation }{collation: spec.collation}
 	}
 	for _, spec := range schema.AllIndexes() {
 		key := indexKey{spec.Collection, spec.Name}
-		if !indexes[key] {
+		expected, exists := indexes[key]
+		if !exists {
 			t.Errorf("索引 %v 尚未纳入固定验收清单", key)
+		}
+		if exists && !reflect.DeepEqual(spec.Collation, expected.collation) {
+			t.Errorf("索引 %v collation = %#v, want %#v", key, spec.Collation, expected.collation)
 		}
 		delete(indexes, key)
 	}
@@ -270,6 +287,33 @@ func TestEnsureCreatesAllDeclaredIndexes(t *testing.T) {
 			}
 			if !reflect.DeepEqual(actual.ExpireAfterSeconds, expected.expireAfterSeconds) {
 				t.Errorf("索引 %q expireAfterSeconds = %#v, want %#v", expected.name, actual.ExpireAfterSeconds, expected.expireAfterSeconds)
+			}
+			if expected.collation != nil {
+				cursor, err := database.Collection(expected.collection).Indexes().List(ctx)
+				if err != nil {
+					t.Fatalf("读取索引 %q 的 collation: %v", expected.name, err)
+				}
+				defer cursor.Close(ctx)
+				var actualCollation *options.Collation
+				for cursor.Next(ctx) {
+					var index struct {
+						Name      string             `bson:"name"`
+						Collation *options.Collation `bson:"collation"`
+					}
+					if err := cursor.Decode(&index); err != nil {
+						t.Fatalf("解码索引 %q: %v", expected.name, err)
+					}
+					if index.Name == expected.name {
+						actualCollation = index.Collation
+						break
+					}
+				}
+				if err := cursor.Err(); err != nil {
+					t.Fatalf("遍历索引 %q: %v", expected.name, err)
+				}
+				if actualCollation == nil || actualCollation.Locale != expected.collation.Locale || actualCollation.Strength != expected.collation.Strength {
+					t.Errorf("索引 %q collation = %#v, want locale=%q strength=%d", expected.name, actualCollation, expected.collation.Locale, expected.collation.Strength)
+				}
 			}
 			// 部分过滤条件不在这里断言：驱动 v2 的 mongo.IndexSpecification
 			// 没有暴露 partialFilterExpression，只有 IndexView.List() 的原始文档里有。

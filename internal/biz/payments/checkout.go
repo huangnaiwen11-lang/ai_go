@@ -104,17 +104,15 @@ type PaymentChannelSelection struct {
 }
 
 func (selection PaymentChannelSelection) Validate() error {
-	provider := strings.TrimSpace(selection.Provider)
-	account := strings.ToLower(strings.TrimSpace(selection.Account))
-	platform := strings.ToLower(strings.TrimSpace(selection.ClientDevicePlatform))
+	selection = selection.normalized()
+	provider := selection.Provider
+	account := selection.Account
+	platform := selection.ClientDevicePlatform
 	if provider == "" {
 		if account != "" {
 			return ErrInvalidPaymentOrder
 		}
 		return nil
-	}
-	if platform == "" {
-		platform = "web"
 	}
 	if strings.HasSuffix(account, "_googlepay") && platform != "web" && platform != "android" {
 		return ErrInvalidPaymentOrder
@@ -128,6 +126,17 @@ func (selection PaymentChannelSelection) Validate() error {
 		}
 	}
 	return nil
+}
+
+func (selection PaymentChannelSelection) normalized() PaymentChannelSelection {
+	selection.Provider = strings.TrimSpace(selection.Provider)
+	selection.Account = strings.ToLower(strings.TrimSpace(selection.Account))
+	selection.ClientDevicePlatform = strings.ToLower(strings.TrimSpace(selection.ClientDevicePlatform))
+	selection.ClientRequestID = strings.TrimSpace(selection.ClientRequestID)
+	if selection.ClientDevicePlatform == "" {
+		selection.ClientDevicePlatform = "web"
+	}
+	return selection
 }
 
 // PayCoresCheckoutResult 是外部建单成功后的最小可信响应。
@@ -158,15 +167,16 @@ type CheckoutService struct {
 }
 
 // CreatePendingPayCoresOrder 为本地收银台测试创建待确认的 Go 自有订单。
-// 它只冻结服务端商品，不调用 PayCores，也不把客户端金额、钻石或渠道参数写入订单。
+// 它只冻结服务端商品和受控的默认 Web 渠道，不调用 PayCores，也不写入客户端金额或钻石数。
 func (service *CheckoutService) CreatePendingPayCoresOrder(ctx context.Context, userID, productID string) (*PaymentOrder, error) {
-	return service.createPendingPayCoresOrder(ctx, userID, productID, "")
+	return service.createPendingPayCoresOrder(ctx, userID, productID, PaymentChannelSelection{ClientDevicePlatform: "web"})
 }
 
-func (service *CheckoutService) createPendingPayCoresOrder(ctx context.Context, userID, productID, clientRequestID string) (*PaymentOrder, error) {
+func (service *CheckoutService) createPendingPayCoresOrder(ctx context.Context, userID, productID string, channel PaymentChannelSelection) (*PaymentOrder, error) {
 	if service == nil || service.repository == nil || service.newOrderID == nil || blank(userID) || blank(productID) {
 		return nil, ErrInvalidPaymentOrder
 	}
+	clientRequestID := channel.ClientRequestID
 	var created *PaymentOrder
 	err := service.repository.WithinTx(ctx, func(txCtx context.Context) error {
 		product, err := service.repository.FindLatestPublishedProduct(txCtx, productID)
@@ -186,10 +196,13 @@ func (service *CheckoutService) createPendingPayCoresOrder(ctx context.Context, 
 			}
 		}
 		order, err := FreezeOrder(CreateOrderInput{
-			OrderID:         orderID,
-			UserID:          userID,
-			Provider:        ProviderPayCores,
-			ProviderOrderID: "local-paycores-" + orderID,
+			OrderID:               orderID,
+			UserID:                userID,
+			Provider:              ProviderPayCores,
+			ProviderOrderID:       "local-paycores-" + orderID,
+			ChannelProvider:       channel.Provider,
+			ChannelAccount:        channel.Account,
+			ChannelDevicePlatform: channel.ClientDevicePlatform,
 		}, *product, service.now())
 		if err != nil {
 			return err
@@ -247,12 +260,16 @@ func (service *CheckoutService) CreatePayCoresCheckoutForChannel(ctx context.Con
 	if service == nil || service.paycores == nil {
 		return PayCoresCheckout{}, ErrDependenciesUnavailable
 	}
-	if err := selection.Validate(); err != nil {
+	channel := selection.normalized()
+	if err := channel.Validate(); err != nil {
 		return PayCoresCheckout{}, err
 	}
-	order, err := service.createPendingPayCoresOrder(ctx, userID, productID, selection.ClientRequestID)
+	order, err := service.createPendingPayCoresOrder(ctx, userID, productID, channel)
 	if err != nil {
 		return PayCoresCheckout{}, err
+	}
+	if !order.matchesPayCoresChannel(channel) {
+		return PayCoresCheckout{}, ErrPaymentOrderMismatch
 	}
 	if err := order.ValidatePayCoresPricing(); err != nil {
 		return PayCoresCheckout{}, err
@@ -264,14 +281,7 @@ func (service *CheckoutService) CreatePayCoresCheckoutForChannel(ctx context.Con
 	if product == nil {
 		return PayCoresCheckout{}, ErrInvalidPaymentOrder
 	}
-	channel := selection
-	if strings.TrimSpace(channel.ClientDevicePlatform) == "" {
-		channel.ClientDevicePlatform = "web"
-	}
-	if err := channel.Validate(); err != nil {
-		return PayCoresCheckout{}, err
-	}
-	orderClientRequestID := strings.TrimSpace(channel.ClientRequestID)
+	orderClientRequestID := channel.ClientRequestID
 	if orderClientRequestID == "" {
 		orderClientRequestID = order.ID
 	}
@@ -303,7 +313,7 @@ func (service *CheckoutService) CreatePayCoresCheckoutForChannel(ctx context.Con
 		if lookupErr != nil {
 			return PayCoresCheckout{}, lookupErr
 		}
-		if current == nil || current.ID != order.ID || current.UserID != order.UserID || current.Provider != order.Provider || current.ProviderOrderID != response.ProviderOrderID || current.ProductID != order.ProductID || current.ProductVersion != order.ProductVersion || current.DiamondAmount != order.DiamondAmount || current.AmountCents != order.AmountCents || current.Currency != order.Currency || (current.Status != PaymentOrderStatusPending && current.Status != PaymentOrderStatusPaid) {
+		if current == nil || current.ID != order.ID || current.UserID != order.UserID || current.Provider != order.Provider || !current.matchesPayCoresChannel(channel) || current.ProviderOrderID != response.ProviderOrderID || current.ProductID != order.ProductID || current.ProductVersion != order.ProductVersion || current.DiamondAmount != order.DiamondAmount || current.AmountCents != order.AmountCents || current.Currency != order.Currency || (current.Status != PaymentOrderStatusPending && current.Status != PaymentOrderStatusPaid) {
 			return PayCoresCheckout{}, ErrPaymentOrderMismatch
 		}
 		return PayCoresCheckout{Order: current, CheckoutURL: response.CheckoutURL}, nil
@@ -311,6 +321,10 @@ func (service *CheckoutService) CreatePayCoresCheckoutForChannel(ctx context.Con
 	order.ProviderOrderID = response.ProviderOrderID
 	order.UpdatedAt = service.now().UTC()
 	return PayCoresCheckout{Order: order, CheckoutURL: response.CheckoutURL}, nil
+}
+
+func (order PaymentOrder) matchesPayCoresChannel(selection PaymentChannelSelection) bool {
+	return order.ChannelProvider == selection.Provider && order.ChannelAccount == selection.Account && order.ChannelDevicePlatform == selection.ClientDevicePlatform
 }
 
 // SettleVerifiedStorePurchase 根据已经验签的商店交易创建或复用冻结订单，再按订单快照结算。

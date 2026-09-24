@@ -200,8 +200,17 @@ func main() {
 		slog.Error("initialize local creation cancellation handler", "error", err)
 		os.Exit(2)
 	}
-	cleanupDependencies := combineCleanups(cleanupCallback, cleanupProviderCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupGenerationStream, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo, cleanupAuthEntry, cleanupAdmin, cleanupWalletView, cleanupWorksView, cleanupFeedback, cleanupNotification, cleanupCreationCancel)
-	g := newGatewayWithPaymentEntry(
+	clientAppResolver, clientAppID, cleanupAppScope, err := newOptionalAppScopeResolver(
+		appScopeEnabled(),
+		getenv("GATEWAY_CONFIG", defaultGatewayConfigPath),
+	)
+	if err != nil {
+		combineCleanups(cleanupCallback, cleanupProviderCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupGenerationStream, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo, cleanupAuthEntry, cleanupAdmin, cleanupWalletView, cleanupWorksView, cleanupFeedback, cleanupNotification, cleanupCreationCancel)()
+		slog.Error("initialize client App scope", "error", err)
+		os.Exit(2)
+	}
+	cleanupDependencies := combineCleanups(cleanupCallback, cleanupProviderCallback, cleanupPaymentCallback, cleanupSessionAuth, cleanupGenerationStream, cleanupPaymentEntry, cleanupPublicT2I, cleanupLocalMedia, cleanupR2Media, cleanupPublicVideo, cleanupAuthEntry, cleanupAdmin, cleanupWalletView, cleanupWorksView, cleanupFeedback, cleanupNotification, cleanupCreationCancel, cleanupAppScope)
+	g := newGatewayWithPaymentEntryAndAppScope(
 		upstream,
 		gateway.NewFileRouteSwitch(os.Getenv("GATEWAY_EXACT_ROUTE_SWITCH_FILE")),
 		admissionTimeout,
@@ -213,6 +222,8 @@ func main() {
 		paymentEntry,
 		authEntryHandler,
 		creationCancelHandler,
+		clientAppResolver,
+		clientAppID,
 		localMediaHandler,
 		walletViewHandler,
 		worksViewHandler,
@@ -265,6 +276,12 @@ func newGateway(upstream *url.URL, routeSwitch gateway.RouteSwitch, admissionTim
 // newGatewayWithPaymentEntry 为 main 提供带本地支付入口的显式装配，保留旧测试辅助函数
 // 的可读参数形态，避免可选 Handler 的位置被不透明的可变参数误解。
 func newGatewayWithPaymentEntry(upstream *url.URL, routeSwitch gateway.RouteSwitch, admissionTimeout time.Duration, generationCallback, providerCallback, publicT2IHandler, publicVideoHandler, paymentCallback, paymentEntry, authEntryHandler, creationCancelHandler http.Handler, localHandlers ...http.Handler) *gateway.Gateway {
+	return newGatewayWithPaymentEntryAndAppScope(upstream, routeSwitch, admissionTimeout, generationCallback, providerCallback, publicT2IHandler, publicVideoHandler, paymentCallback, paymentEntry, authEntryHandler, creationCancelHandler, nil, "", localHandlers...)
+}
+
+// newGatewayWithPaymentEntryAndAppScope keeps the App-instance gate explicit
+// at the composition root while retaining the legacy test helper above.
+func newGatewayWithPaymentEntryAndAppScope(upstream *url.URL, routeSwitch gateway.RouteSwitch, admissionTimeout time.Duration, generationCallback, providerCallback, publicT2IHandler, publicVideoHandler, paymentCallback, paymentEntry, authEntryHandler, creationCancelHandler http.Handler, clientAppResolver gateway.ClientAppResolver, clientAppID string, localHandlers ...http.Handler) *gateway.Gateway {
 	var localMediaHandler http.Handler
 	var walletViewHandler http.Handler
 	var worksViewHandler http.Handler
@@ -317,6 +334,8 @@ func newGatewayWithPaymentEntry(upstream *url.URL, routeSwitch gateway.RouteSwit
 		NotificationHandler:     notificationHandler,
 		GenerationStreamHandler: generationStreamHandler,
 		AdminHandler:            adminHandler,
+		ClientAppResolver:       clientAppResolver,
+		ClientAppID:             clientAppID,
 	})
 }
 
@@ -396,6 +415,12 @@ func localNotificationsEnabled() bool {
 // 角色，因此普通 Go 会话不能因路径前缀而获得后台数据。
 func localAdminEnabled() bool {
 	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_LOCAL_ADMIN_ENABLED")), "true")
+}
+
+// appScopeEnabled opts into the single active App-instance gate. It stays
+// independent from local route switches so disabled deployments remain byte-for-byte compatible.
+func appScopeEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("GATEWAY_APP_SCOPE_ENABLED")), "true")
 }
 
 // localGenerationStreamEnabled 是本地内存 SSE 的独立开关，不代表 Redis 兼容或生产放行。
